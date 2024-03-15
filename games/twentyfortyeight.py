@@ -278,7 +278,7 @@ class Game():
             await self.message.edit(embed = e, view = v, file = f)
 
         upButton.callback, leftButton.callback, rightButton.callback, downButton.callback = upCallback, leftCallback, rightCallback, downCallback
-        return discord.Embed(color = config.Color.COLORLESS).set_image(url = "attachment://board.png").set_footer(text = config.footer), view, discord.File(fp = bytes, filename = "board.png")
+        return discord.Embed(content = "**WARNING:** this game does NOT work yet.", color = config.Color.COLORLESS).set_image(url = "attachment://board.png").set_footer(text = config.footer), view, discord.File(fp = bytes, filename = "board.png")
     
     class Achievement(Enum):
         
