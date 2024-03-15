@@ -59,8 +59,8 @@ class User:
     def __init__(self, id, guild = None):
         self.id = id
 
-        if os.path.exists(f"{os.path.join(os.getcwd(), 'data/users')}/{id}.p"):
-            user: User = pickle.load(open(f"{os.path.join(os.getcwd(), 'data/users')}/{id}.p", "rb"))
+        if os.path.exists(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p"):
+            user: User = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb"))
 
             self.join: float = user.join
             self.subscribed_since: float = user.subscribed_since
@@ -291,19 +291,19 @@ class User:
                 }
             }
 
-            pickle.dump(None, open(f"{os.path.join(os.getcwd(), 'data/games')}/{self.id}.p", "wb"))
+            pickle.dump(None, open(f"{os.path.join(os.path.dirname(__file__), 'data/games')}/{self.id}.p", "wb"))
             self.save()
 
             if guild:
                 guild.users.append(self.id)
                 guild.save()
     
-    def save(self): pickle.dump(self, open(f"{os.path.join(os.getcwd(), 'data/users')}/{self.id}.p", "wb"))
+    def save(self): pickle.dump(self, open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{self.id}.p", "wb"))
     def get_level(self): return int(0.08 * math.sqrt(self.xp))
     def get_next_level(self): return int(((self.get_level() + 1) / 0.08)) ** 2
 
     def game(self): 
-        try: return pickle.load(open(f"{os.path.join(os.getcwd(), 'data/games')}/{self.id}.p", "rb"))
+        try: return pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/games')}/{self.id}.p", "rb"))
         except: return None
 
     def achievement_str(self, game):
@@ -361,8 +361,8 @@ class User:
 class Guild:
     def __init__(self, id):
         self.id = id
-        if os.path.exists(f"{os.path.join(os.getcwd(), 'data/guilds')}/{id}.p"):
-            guild: Guild = pickle.load(open(f"{os.path.join(os.getcwd(), 'data/guilds')}/{id}.p", "rb"))
+        if os.path.exists(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{id}.p"):
+            guild: Guild = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{id}.p", "rb"))
             self.users = guild.users
             self.sharing: bool = guild.sharing
         else:
@@ -371,7 +371,7 @@ class Guild:
 
             self.save()
 
-    def save(self): pickle.dump(self, open(f"{os.path.join(os.getcwd(), 'data/guilds')}/{self.id}.p", "wb"))
+    def save(self): pickle.dump(self, open(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{self.id}.p", "wb"))
 
 bot = discord.Bot(activity = discord.Game("Play games with friends!"))
 
@@ -1020,7 +1020,7 @@ async def blackjackGameCommand(ctx, bet: discord.Option(int, "Bet an amount betw
         g.message = await ctx.interaction.followup.send(embed = e, view = v)
     
 @play.command(name = "whiteonblack", description = "Find the funniest response to the Czar\'s prompts!")
-@discord.is_nsfw()
+# @discord.is_nsfw()
 async def whiteonblackGameCommand(ctx):
     await ctx.defer()
 
@@ -1083,7 +1083,7 @@ async def whiteonblackGameCommand(ctx):
                 await interaction.followup.send(embed = e, ephemeral = True)
                 return
             
-            if interaction.user.id in players and User(interaction.user.id, Guild(ctx.guild_id)).game:
+            if interaction.user.id in players:
                 players.remove(interaction.user.id)
                 embed.description -= f"\n- {interaction.user.mention}"
                 startButton.disabled = True if 2 <= len(players) >= 10 else False

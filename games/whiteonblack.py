@@ -107,7 +107,7 @@ class Game():
     def save(self):
         game = copy.copy(self)
         game.message = None
-        for i in self.players: pickle.dump(game, open(f"{os.path.join(os.getcwd(), 'data/games')}/{i.id}.p", "wb"))
+        for i in self.players: pickle.dump(game, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{i.id}.p", "wb"))
 
     def render(self):
         embeds = [discord.Embed(color = config.Color.BLACK_CARD, title = self.black.name)]
@@ -290,14 +290,14 @@ class Game():
             user = User(player.id)
             user.stats["whiteonblack"]["games"] += 1
             user.save()
-            pickle.dump(None, open(f"{os.path.join(os.getcwd(), 'data/games')}/{user.id}.p", "wb"))
+            pickle.dump(None, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{user.id}.p", "wb"))
 
             if len(self.players) > 1: await interaction.followup.send(embed = discord.Embed(title = "You have conceded!", description = "You have been removed from the game and your cards have been shuffled back into the deck.", color = config.Color.COLORLESS))
             else:
                 user = User(self.players[0].id)
                 user.stats["whiteonblack"]["games"] += 1
                 user.save()
-                pickle.dump(None, open(f"{os.path.join(os.getcwd(), 'data/games')}/{user.id}.p", "wb"))
+                pickle.dump(None, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{user.id}.p", "wb"))
 
                 medalSelect   = discord.ui.Select(placeholder = "Give a player a medal.", row = 1)
                 endorseSelect = discord.ui.Select(placeholder = "Endorse a player.", row = 2)

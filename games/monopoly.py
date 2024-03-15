@@ -249,7 +249,7 @@ class Game():
         game.message = None
         game.card = None
 
-        for i in self.players: pickle.dump(game, open(f"{os.path.join(os.getcwd(), 'data/games')}/{i.id}.p", "wb"))
+        for i in self.players: pickle.dump(game, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{i.id}.p", "wb"))
 
     def log(self, message):
         if len(self._log) < 3: self._log.append(message)
@@ -861,7 +861,7 @@ class Game():
                         medalSelect.add_option(label = i.name, value = i.name)
                         endorseSelect.add_option(label = i.name, value = i.name)
 
-                        pickle.dump(None, open(f"{os.path.join(os.getcwd(), 'data/games')}/{i.id}.p", "wb"))
+                        pickle.dump(None, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{i.id}.p", "wb"))
 
                     async def medalCallback(interaction):
                         await interaction.response.defer(ephemeral = True)

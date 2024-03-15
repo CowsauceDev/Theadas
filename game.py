@@ -30,8 +30,8 @@ class User:
     def __init__(self, id):
         self.id = id
 
-        if os.path.exists(f"{os.path.join(os.getcwd(), 'data/users')}/{id}.p"):
-            user: User = pickle.load(open(f"{os.path.join(os.getcwd(), 'data/users')}/{id}.p", "rb"))
+        if os.path.exists(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p"):
+            user: User = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb"))
 
             self.join: float = user.join
             self.subscribed_since: float = user.subscribed_since
@@ -255,7 +255,7 @@ class User:
 
             self.save()
     
-    def save(self): pickle.dump(self, open(f"{os.path.join(os.getcwd(), 'data/users')}/{self.id}.p", "wb"))
+    def save(self): pickle.dump(self, open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{self.id}.p", "wb"))
     def get_level(self): return int(0.08 * math.sqrt(self.xp))
     def get_next_level(self): return int(((self.get_level() + 1) / 0.08)) ** 2
 
