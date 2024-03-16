@@ -25,6 +25,8 @@ import random
 from typing import List
 from enum import Enum
 
+name = "Blackjack"
+
 description = '''
     someone remind me to write this
 '''
@@ -58,8 +60,9 @@ class Game():
         self.user: User = user
 
         self.deck:   List[Card] = [Card(r, s) for r in ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"] for s in Suit]
-        self.hand:   List[Card] = [self.deck.pop(random.randint(0, len(self.deck))) for _ in range(2)]
-        self.dealer: List[Card] = [self.deck.pop(random.randint(0, len(self.deck))) for _ in range(2)]
+        # self.hand:   List[Card] = [self.deck.pop(random.randint(0, len(self.deck) - 1)) for _ in range(2)]
+        self.hand:   List[Card] = [Card("9", Suit.CLUBS), Card("7", Suit.CLUBS)]
+        self.dealer: List[Card] = [self.deck.pop(random.randint(0, len(self.deck) - 1)) for _ in range(2)]
 
     def render(self):
         hitButton    = discord.ui.Button(label = "HIT",    style = discord.ButtonStyle.secondary, row = 0)
@@ -88,6 +91,38 @@ class Game():
                     bust.add_field(name = "Dealer's Hand", value = dealer_str, inline = False)
 
                     await self.message.edit(embed = bust, view = discord.ui.View())
+                    return
+            
+            elif True:
+                claimButton = discord.ui.Button(emoji = "🎁", label = "CLAIM REWARDS", style = discord.ButtonStyle.green, row = 3)
+
+                self.user.stats["blackjack"]["wins"] += 1
+                self.user.chips -= self.bet
+                self.user.save()
+
+                won = discord.Embed(title = f"Blackjack! (Bet: {self.bet})", description = f"You WON! You got a **NATURAL BJ** and won your **{self.bet}** chip bet. You should play again!", color = config.Color.COLORLESS).set_footer(text = config.footer)
+                hand_str:   str = ""
+                dealer_str: str = ""
+
+                for i in self.hand:   hand_str   += f" `{str(i)}`"
+                for i in self.dealer: dealer_str += f" `{str(i)}`"
+
+                won.add_field(name = "Your Hand", value = hand_str, inline = False)
+                won.add_field(name = "Dealer's Hand", value = dealer_str, inline = False)
+
+                async def claimCallback(interaction):
+                    await interaction.response.defer(ephemeral = True)
+                    user = User(interaction.user.id)
+
+                    if user.claimed: await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.ALREADY_DID_THAT.value, color = config.Color.ERROR).set_footer(text = f"Version: {config.version}"), ephemeral = True)
+                    else:
+                        xp, tickets, jackpot = user.award()
+                        await interaction.followup.send(embed = discord.Embed(title = "You claimed your Rewards!", description = f"You received **{xp}** experience and **{tickets}** tickets." + (f"\n**JACKPOT!**\nYou also got {jackpot}!" if jackpot else ""), color = config.Color.COLORLESS), ephemeral = True)
+
+                claimButton.callback = claimCallback
+
+                await self.message.edit(embed = won, view = discord.ui.View(claimButton))
+                return
 
             e, v = self.render()
             await self.message.edit(embed = e, view = v)
@@ -96,7 +131,7 @@ class Game():
             await interaction.response.defer(ephemeral = True)
 
             while sum([i.value for i in self.dealer]) < 17: self.dealer.append(self.deck.pop(random.randint(0, len(self.deck))))
-            if sum([i.value for i in self.dealer]) == 21 or sum([i.value for i in self.hand]) < sum([i.value for i in self.dealer]):
+            if sum([i.value for i in self.dealer]) == 21 or sum([i.value for i in self.hand]) < sum([i.value for i in self.dealer]) <= 21:
                 self.user.stats["blackjack"]["losses"] += 1
                 self.user.chips -= self.bet
                 self.user.save()

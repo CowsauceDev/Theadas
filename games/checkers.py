@@ -23,6 +23,8 @@ import random
 
 from enum import Enum
 
+name = "Checkers"
+
 description = '''
     This game is not yet implemented
 '''

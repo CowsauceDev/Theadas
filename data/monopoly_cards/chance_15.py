@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import games.monopoly as monopoly
+import games.trust as trust
 
-class chance_15(monopoly.Card):
+class chance_15(trust.Card):
     def __init__(self):
         super().__init__("Payday!", "You worked the corner and earned $150.", "assets/card.png")
 

@@ -41,7 +41,7 @@
     
     {
         "name": "Which kind of \\_\\_\\_\\_\\_\\_ is best? \\_\\_\\_\\_\\_\\_.",
-        "blanks": 1
+        "blanks": 2
     },
     
     {
@@ -101,7 +101,7 @@
     
     {
         "name": "\\_\\_\\_\\_\\_\\_ used \\_\\_\\_\\_\\_\\_! It's super effective!",
-        "blanks": 1
+        "blanks": 2
     },
     
     {
@@ -156,6 +156,11 @@
     
     {
         "name": "OpenAI's new model, Orion, can generate \\_\\_\\_\\_\\_\\_.",
+        "blanks": 1
+    },
+
+    {
+        "name": "I kissed a \\_\\_\\_\\_\\_\\_ and I liked it.",
         "blanks": 1
     },
     

@@ -27,6 +27,8 @@ from typing import List
 from enum import Enum
 from PIL import Image, ImageDraw, ImageFont
 
+name = "2048"
+
 description = '''
     someone remind me to write this
 '''
@@ -51,11 +53,14 @@ description = '''
 
 class Tile:
     def __init__(self, position: tuple[int, int], value: int = 0):
-        self.position = position
+        self.position: tuple[int, int] = position
         self.value: int = value
-        self.font:  tuple[int, int, int] = (119, 110, 101) if value < 8 else (249, 246, 242)
+        self.merged: bool = False
 
-    def color(self):
+    def font(self) -> tuple[int, int, int]:
+        return (119, 110, 101) if self.value < 8 else (249, 246, 242)
+
+    def color(self) -> tuple[int, int, int]:
         match self.value:
             case 2:    return (238, 228, 218)
             case 4:    return (237, 224, 200)
@@ -76,32 +81,42 @@ class Game():
         self.message: discord.Message = None
         self.user: User = user
         self.board: List[List[Tile]] = []
+        self.user.plays["2048"] -= 1
 
         for x in range(4):
             row = []
             for y in range(4): row.append(Tile((x, y)))
             self.board.append(row)
 
-        for _ in range(2): random.choice(random.choice(self.board)).value = 2
+        self.spawn(2)
+    
+    def spawn(self, n):
+        spawns = 0
+
+        while spawns < n:
+            tile = random.choice(random.choice(self.board))
+            value = 4 if random.randint(1, 10) == 1 else 2
+
+            if tile.value == 0:
+                tile.value = value
+                spawns += 1
 
     def validate_move(self, direction: tuple[int, int]):
         board = copy.copy(self.board)
 
         # up
-        if direction == (0, 1):
+        if direction == (0, -1):
             for x in range(4):
                 for y in range(3, -1, -1):
-                    try:
-                        if (board[x][y].value != 0) and board[x][y].value == board[x][y - 1].value or board[x][y - 1].value == 0: return True
-                    except: pass
+                    if y > 0 and (board[x][y].value != 0 and ((self.board[x][y - 1].merged == False and self.board[x][y].merged == False and board[x][y].value == board[x][y - 1].value) or board[x][y - 1].value == 0)): return True
             return False
         
         # down
-        if direction == (0, -1):
+        if direction == (0, 1):
             for x in range(4):
                 for y in range(4):
                     try:
-                        if (board[x][y].value != 0) and board[x][y].value == board[x][y + 1].value or board[x][y + 1].value == 0: return True
+                        if board[x][y].value != 0 and ((self.board[x][y + 1].merged == False and self.board[x][y].merged == False and board[x][y].value == board[x][y + 1].value) or board[x][y + 1].value == 0): return True
                     except: pass
             return False
         
@@ -110,7 +125,7 @@ class Game():
             for y in range(4):
                 for x in range(3, -1, -1):
                     try:
-                        if (board[x][y].value != 0) and board[x][y].value == board[x + 1][y].value or board[x + 1][y].value == 0: return True
+                        if board[x][y].value != 0 and ((self.board[x + 1][y].merged == False and self.board[x][y].merged == False and board[x][y].value == board[x + 1][y].value) or board[x + 1][y].value == 0): return True
                     except: pass
             return False
         
@@ -118,97 +133,93 @@ class Game():
         if direction == (-1, 0):
             for y in range(4):
                 for x in range(4):
-                    try:
-                        if (board[x][y].value != 0) and board[x][y].value == board[x - 1][y].value or board[x - 1][y].value == 0: return True
-                    except: pass
+                    if x > 0 and (board[x][y].value != 0 and ((self.board[x - 1][y].merged == False and self.board[x][y].merged == False and board[x][y].value == board[x - 1][y].value) or board[x - 1][y].value == 0)): return True
             return False
     
     async def move(self, direction: tuple[int, int]):
         # while self.validate_move(direction):
         # up
         if direction == (0, -1):
-            for x in range(4):
-                for y in range(3, -1, -1):
-                    try:
-                        if (self.board[x][y].value != 0) and self.board[x][y].value == self.board[x][y - 1].value:
-                            self.board[x][y - 1].value *= 2
-                            self.board[x][y].value = 0
+            while self.validate_move(direction):
+                for x in range(4):
+                    for y in range(4):
+                        if y > 0:
+                            if self.board[x][y].value != 0 and self.board[x][y - 1].merged == False and self.board[x][y].merged == False and self.board[x][y].value == self.board[x][y - 1].value:
+                                self.board[x][y - 1].value *= 2
+                                self.board[x][y - 1].merged = True
+                                self.board[x][y].value = 0
 
-                        if self.board[x][y - 1].value == 0:
-                            self.board[x][y - 1].value = self.board[x][y].value
-                            self.board[x][y].value = 0
-                    except: pass
-            return False
+                            if self.board[x][y].value != 0 and self.board[x][y - 1].value == 0:
+                                self.board[x][y - 1].value = self.board[x][y].value
+                                self.board[x][y].value = 0
         
         # down
         if direction == (0, 1):
-            for x in range(4):
-                for y in range(4):
-                    try:
-                        if (self.board[x][y].value != 0) and self.board[x][y].value == self.board[x][y + 1].value:
-                            self.board[x][y + 1].value *= 2
-                            self.board[x][y].value = 0
+            while self.validate_move(direction):
+                for x in range(4):
+                    for y in range(3, -1, -1):
+                        try:
+                            if self.board[x][y].value != 0 and self.board[x][y + 1].merged == False and self.board[x][y].merged == False and self.board[x][y].value == self.board[x][y + 1].value:
+                                self.board[x][y + 1].value *= 2
+                                self.board[x][y + 1].merged = True
+                                self.board[x][y].value = 0
 
-                        if self.board[x][y + 1].value == 0:
-                            self.board[x][y + 1].value = self.board[x][y].value
-                            self.board[x][y].value = 0
-                    except: pass
-            return False
+                            if self.board[x][y].value != 0 and self.board[x][y + 1].value == 0:
+                                self.board[x][y + 1].value = self.board[x][y].value
+                                self.board[x][y].value = 0
+                        except: pass
         
         # right
         if direction == (1, 0):
-            for y in range(4):
-                for x in range(3, -1, -1):
-                    try:
-                        if (self.board[x][y].value != 0) and self.board[x][y].value == self.board[x + 1][y].value:
-                            self.board[x + 1][y].value *= 2
-                            self.board[x][y].value = 0
+            while self.validate_move(direction):
+                for y in range(4):
+                    for x in range(3, -1, -1):
+                        try:
+                            if self.board[x][y].value != 0 and self.board[x + 1][y].merged == False and self.board[x][y].merged == False and self.board[x][y].value == self.board[x + 1][y].value:
+                                self.board[x + 1][y].value *= 2
+                                self.board[x + 1][y].merged = True
+                                self.board[x][y].value = 0
 
-                        if self.board[x + 1][y].value == 0:
-                            self.board[x + 1][y].value = self.board[x][y].value
-                            self.board[x][y].value = 0
-                    except: pass
-            return False
+                            if self.board[x][y].value != 0 and self.board[x + 1][y].value == 0:
+                                self.board[x + 1][y].value = self.board[x][y].value
+                                self.board[x][y].value = 0
+                        except: pass
         
         # left
         if direction == (-1, 0):
-            for y in range(4):
-                for x in range(4):
-                    try:
-                        print((x, y), self.board[x][y].value, self.board[x - 1][y].value)
-                        if (self.board[x][y].value != 0) and self.board[x][y].value == self.board[x - 1][y].value:
-                            self.board[x - 1][y].value *= 2
-                            self.board[x][y].value = 0
-                            print(True, self.board[x][y].value, self.board[x - 1][y].value)
+            while self.validate_move(direction):
+                for y in range(4):
+                    for x in range(4):
+                        if x > 0:
+                            if self.board[x][y].value != 0 and self.board[x - 1][y].merged == False and self.board[x][y].merged == False and self.board[x][y].value == self.board[x - 1][y].value:
+                                self.board[x - 1][y].value *= 2
+                                self.board[x - 1][y].merged = True
+                                self.board[x][y].value = 0
 
-                        if self.board[x - 1][y].value == 0:
-                            self.board[x - 1][y].value = self.board[x][y].value
-                            self.board[x][y].value = 0
-                            print(False, self.board[x][y].value, self.board[x - 1][y].value)
+                            if self.board[x][y].value != 0 and self.board[x - 1][y].value == 0:
+                                self.board[x - 1][y].value = self.board[x][y].value
+                                self.board[x][y].value = 0
 
-                    except: pass
-            return False
+        if True not in [self.validate_move(i) for i in [(0, -1), (-1, 0), (1, 0), (0, 1)]]:
+            self.user.stats["2048"]["games"] += 1
+            self.user.save()
 
-        if True not in [self.validate_move(i) for i in [(0, 1), (-1, 0), (1, 0), (0, -1)]]:
-            for i in self.hand: i.value = 1 if i.rank == "A" else i.value
-            if sum([i.value for i in self.hand]) > 21: 
-                self.user.stats["blackjack"]["losses"] += 1
-                self.user.chips -= self.bet
-                self.user.save()
+            e, _, f = self.render()
+            e.set_image(url = "attachment://board.png").set_footer(text = config.footer).description = "You LOST! You ran out of space without getting 2048."
+            await self.message.edit(embed = e, view = discord.ui.View(), file = f)
+            return
+        
+        if 2048 in [self.board[x][y] for x in range(4) for y in range(4)]:
+            self.user.stats["2048"]["games"] += 1
+            self.user.save()
 
-                bust = discord.Embed(title = f"Blackjack! (Bet: {self.bet})", description = f"You BUSTED! Your hand is worth more than 21, and you have lost your **{self.bet}** chip bet. Better luck next time!", color = config.Color.COLORLESS).set_footer(text = config.footer)
-                hand_str:   str = ""
-                dealer_str: str = ""
+            e, _, f = self.render()
+            e.set_image(url = "attachment://board.png").set_footer(text = config.footer).description = "You WON! Look at that shiny 2048 tile!"
+            await self.message.edit(embed = e, view = discord.ui.View(), file = f)
+            return
 
-                for i in self.hand:   hand_str   += f" `{str(i)}`"
-                for i in self.dealer: dealer_str += f" `{str(i)}`"
-
-                bust.add_field(name = "Your Hand", value = hand_str, inline = False)
-                bust.add_field(name = "Dealer's Hand", value = dealer_str, inline = False)
-
-                await self.message.edit(embed = bust, view = discord.ui.View())
-
-        return True
+        self.spawn(5)
+        for i in [self.board[x][y] for x in range(4) for y in range(4)]: i.merged = False
 
     def render(self):
         upButton    = discord.ui.Button(emoji = "🔼", style = discord.ButtonStyle.secondary, row = 0, disabled = not self.validate_move((0, -1)))
@@ -244,7 +255,7 @@ class Game():
                 draw = ImageDraw.Draw(board)
                 draw.rounded_rectangle(xy = (coords[0], coords[1], coords[0] + tilesize, coords[1] + tilesize), radius = corner,  fill = i.color())
 
-                if i.value > 0: draw.text(xy = (coords[0] + (tilesize / 2), coords[1] + (tilesize / 2)), text = str(i.value), fill = i.font, font = font, anchor = "mm")
+                if i.value > 0: draw.text(xy = (coords[0] + (tilesize / 2), coords[1] + (tilesize / 2)), text = str(i.value), fill = i.font(), font = font, anchor = "mm")
 
         board.save(bytes, "png")
         bytes.seek(0)
@@ -254,31 +265,35 @@ class Game():
             await self.move((0, -1))
 
             e, v, f = self.render()
-            await self.message.edit(embed = e, view = v, file = f)
+            await self.message.delete()
+            self.message = await interaction.followup.send(embed = e, view = v, file = f)
 
         async def leftCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             await self.move((-1, 0))
 
             e, v, f = self.render()
-            await self.message.edit(embed = e, view = v, file = f)
+            await self.message.delete()
+            self.message = await interaction.followup.send(embed = e, view = v, file = f)
 
         async def rightCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             await self.move((1, 0))
 
             e, v, f = self.render()
-            await self.message.edit(embed = e, view = v, file = f)
+            await self.message.delete()
+            self.message = await interaction.followup.send(embed = e, view = v, file = f)
 
         async def downCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             await self.move((0, 1))
 
             e, v, f = self.render()
-            await self.message.edit(embed = e, view = v, file = f)
+            await self.message.delete()
+            self.message = await interaction.followup.send(embed = e, view = v, file = f)
 
         upButton.callback, leftButton.callback, rightButton.callback, downButton.callback = upCallback, leftCallback, rightCallback, downCallback
-        return discord.Embed(content = "**WARNING:** this game does NOT work yet.", color = config.Color.COLORLESS).set_image(url = "attachment://board.png").set_footer(text = config.footer), view, discord.File(fp = bytes, filename = "board.png")
+        return discord.Embed(color = config.Color.COLORLESS).set_image(url = "attachment://board.png").set_footer(text = config.footer), view, discord.File(fp = bytes, filename = "board.png")
     
     class Achievement(Enum):
         

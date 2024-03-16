@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import games.monopoly as monopoly
+import games.trust as trust
 
-class chance_3(monopoly.Card):
+class chance_3(trust.Card):
     def __init__(self):
         super().__init__("Enjoy the Clowns, Bitch", "Advance to Mammon's Theater. Collect $200 if you pass go.", "assets/card.png")
 

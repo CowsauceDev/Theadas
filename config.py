@@ -18,21 +18,29 @@
 
 from enum import Enum
 
-version = "0.1"
-token = ""
-owner = 645064200502378506
+version = "0.2"
+token   = ""
+owners  = [645064200502378506, 397898909625745419, 322176427715985421]
 
 footer = f"/credits | Version: {version}"
 
 error_titles = [
     "Oh no!",
+    "Uh oh....",
+    "Oops!",
+    "Well, that didn't work.",
+    "Nope!",
+    "That ain't it.",
+    "That's not good!"
 ]
 
 credits = {
-    "**[@cowsauce](https://discord.gg/pZ9r5jm2)**": "bot owner, developer, artist, tester",
+    "**[@cowsauce](https://discord.gg/pZ9r5jm2)**": "bot owner, developer, designer, artist, tester",
     "**@alicane**": "server owner, designer, tester",
     "**[@gooeygumi](https://discord.gg/Z2ZnZFZQ)**": "artist",
     "**Rinnegan**": "tester",
+    "**icedog**": "code review",
+    "**Abstainus**": "ideas"
 }
 
 class Error(Enum):
@@ -58,5 +66,5 @@ class Color():
     BLACK_CARD = 0x000000
     WHITE_CARD = 0xFFFFFF
 
-    # Monopoly
+    # Trust
     HELLARED  = 0xEE2051

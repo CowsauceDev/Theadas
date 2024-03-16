@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import games.monopoly as monopoly
+import games.trust as trust
 
-class chest_15(monopoly.Card):
+class chest_15(trust.Card):
     def __init__(self):
         super().__init__("Close Enough!", "You make counterfeit money out of bible pages. Collect $10.", "assets/card.png")
 

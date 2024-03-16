@@ -24,6 +24,8 @@ import discord
 import random
 from enum import Enum
 
+name = "Texas Hold 'Em"
+
 description = '''
     This game is not yet implemented
 '''

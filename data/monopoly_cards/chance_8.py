@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import games.monopoly as monopoly
+import games.trust as trust
 
-class chance_8(monopoly.Card):
+class chance_8(trust.Card):
     def __init__(self):
         super().__init__("Repent", "Repent and be released from horny jail. Hold on to this card until you are in horny jail.", "assets/card.png")
     def on_draw(self, player, game):

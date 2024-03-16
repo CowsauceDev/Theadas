@@ -26,6 +26,8 @@ import random, importlib, os, io, copy, pickle
 from enum import Enum
 from PIL import Image
 
+name = "Trust"
+
 description = '''
     someone remind me to write this
 '''
@@ -47,8 +49,8 @@ class Card():
     
     @classmethod
     def load(self, name):
-        if os.path.exists(f"data/monopoly_cards/{name}.py"):
-            spec = importlib.util.spec_from_file_location(name, f"data/monopoly_cards/{name}.py")
+        if os.path.exists(f"data/trust_cards/{name}.py"):
+            spec = importlib.util.spec_from_file_location(name, f"data/trust_cards/{name}.py")
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
@@ -67,8 +69,6 @@ class Set(Enum):
     RAILROADS = "Vehicles"
     PORTALS  = "Portals"
     SPECIAL  = ""
-
-    discord.Message.edit
 
 class Location():
     def __init__(self, name, image, cost, rent, mortgage, set, coords):
@@ -147,14 +147,14 @@ class Player:
         
         # chest
         if self.position in [2, 17, 33]:
-            chest = [i for i in os.listdir("data/monopoly_cards") if i.startswith("chest")]
+            chest = [i for i in os.listdir("data/trust_cards") if i.startswith("chest")]
             card = Card.load(random.choice(chest).split(".")[0])()
             card.on_draw(game.active, game)
             game.card = card
 
         # chance
         if self.position in [7, 22, 35]:
-            chance = [i for i in os.listdir("data/monopoly_cards") if i.startswith("chance")]
+            chance = [i for i in os.listdir("data/trust_cards") if i.startswith("chance")]
             card = Card.load(random.choice(chance).split(".")[0])()
             card.on_draw(game.active, game)
             game.card = card
@@ -330,7 +330,8 @@ class Game():
                 self.save()
 
                 e, v, f = self.render()
-                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
 
             else: 
                 e = discord.Embed()
@@ -476,7 +477,8 @@ class Game():
 
                                 self.save()
                                 e, v, f = self.render()
-                                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                                await self.message.delete()
+                                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
                             
                             else:
                                 e = discord.Embed()
@@ -495,7 +497,8 @@ class Game():
                                 self.save()
 
                                 e, v, f = self.render()
-                                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                                await self.message.delete()
+                                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
                             
                             else:
                                 e = discord.Embed()
@@ -546,7 +549,8 @@ class Game():
                 self.save()
                 
                 e, v, f = self.render()
-                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
 
             else: 
                 e = discord.Embed()
@@ -617,7 +621,8 @@ class Game():
                 self.save()
 
                 e, v, f = self.render()
-                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
                             
             s1.callback = selectCallback
             s2.callback = selectCallback
@@ -644,7 +649,7 @@ class Game():
 
                 location = None
                 even     = True
-                monopoly = True
+                trust = True
 
                 if interaction.user.id != self.active.id:
                     e = discord.Embed()
@@ -661,10 +666,10 @@ class Game():
                         if i.title == s1.values[0]: location = i
 
                     for i in self.board:
-                        if i.set == location.set and i.owner != self.active: monopoly = False
+                        if i.set == location.set and i.owner != self.active: trust = False
                         if i.set == location.set and i.houses < location.houses: even = False
 
-                    if even and monopoly and self.active.cash >= location.cost:
+                    if even and trust and self.active.cash >= location.cost:
                         location.houses += 1
                         self.active.cash -= location.cost
                         self.log(f"{self.active.name} has bought a house on {location.name} for ${location.cost}.")
@@ -674,7 +679,7 @@ class Game():
                         e = discord.Embed()
                         e.title = random.choice(config.error_titles)
                         e.color = config.Color.ERROR
-                        e.description = ("" if monopoly else "You must own every property in a set to build houses.") + ("" if even else "You must build houses and hotels evenly.")
+                        e.description = ("" if trust else "You must own every property in a set to build houses.") + ("" if even else "You must build houses and hotels evenly.")
                         e.set_footer(text = config.footer)
 
                         await interaction.followup.send(embed = e, ephemeral = True)
@@ -693,10 +698,10 @@ class Game():
                         if i.title == s1.values[0]: location = i
 
                     for i in self.board:
-                        if i.set == location.set and i.owner != self.active: monopoly = False
+                        if i.set == location.set and i.owner != self.active: trust = False
                         if i.set == location.set and i.houses < location.houses: even = False
 
-                    if even and monopoly:
+                    if even and trust:
                         location.houses += 1
                         self.active.cash -= location.cost
                         self.log(f"{self.active.name} has bought a house on {location.name} for ${location.cost}.")
@@ -706,14 +711,15 @@ class Game():
                         e = discord.Embed()
                         e.title = random.choice(config.error_titles)
                         e.color = config.Color.ERROR
-                        e.description = ("" if monopoly else "You must own every property in a set to build houses.") + ("" if even else "You must build houses and hotels evenly.")
+                        e.description = ("" if trust else "You must own every property in a set to build houses.") + ("" if even else "You must build houses and hotels evenly.")
                         e.set_footer(text = config.footer)
 
                         await interaction.followup.send(embed = e, ephemeral = True)
 
                 await message.delete()
                 e, v, f = self.render()
-                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
                             
             s1.callback = selectCallback
             s2.callback = selectCallback
@@ -777,7 +783,7 @@ class Game():
                         if i.title == s1.values[0]: location = i
 
                     for i in self.board:
-                        if i.set == location.set and i.owner != self.active: monopoly = False
+                        if i.set == location.set and i.owner != self.active: trust = False
                         if i.set == location.set and i.houses < location.houses: even = False
 
                     if even:
@@ -797,7 +803,8 @@ class Game():
 
                 await message.delete()
                 e, v, f = self.render()
-                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
                             
             s1.callback = selectCallback
             s2.callback = selectCallback
@@ -818,7 +825,8 @@ class Game():
                 
                 self.save()
                 e, v, f = self.render()
-                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
 
             else: 
                 e = discord.Embed()
@@ -836,7 +844,7 @@ class Game():
                 for i in self.active.properties: i.owner = None
 
                 u = User(self.active.id)
-                u.stats["monopoly"]["losses"] += 1
+                u.stats["trust"]["losses"] += 1
                 u.save()
 
                 self.players.remove(self.active)
@@ -849,7 +857,7 @@ class Game():
 
                 if len(self.players) == 1:
                     winner = User(self.players[0].id)
-                    winner.stats["monopoly"]["wins"] += 1
+                    winner.stats["trust"]["wins"] += 1
                     winner.save()
 
                     medalSelect   = discord.ui.Select(placeholder = "Give a player a medal.", row = 1)
@@ -891,9 +899,9 @@ class Game():
                         async def callback(interaction):
                             await interaction.response.defer(ephemeral = True)
                             match s.values[0]:
-                                case "lucky": user.stats["monopoly"]["medals"]["lucky"] += 1
-                                case "smart investor": user.stats["monopoly"]["medals"]["smart investor"] += 1
-                                case "negotiator": user.stats["monopoly"]["medals"]["negotiator"] += 1
+                                case "lucky": user.stats["trust"]["medals"]["lucky"] += 1
+                                case "smart investor": user.stats["trust"]["medals"]["smart investor"] += 1
+                                case "negotiator": user.stats["trust"]["medals"]["negotiator"] += 1
                                 case _: pass
                             
                             user.save()
@@ -953,11 +961,13 @@ class Game():
                     claimButton.callback   = claimCallback
 
                     _, _, f = self.render()
-                    await self.message.edit(embed = discord.Embed(title = f"{self.players[0].name} wins!", description = "Endorse players or award them medals below.", color = config.Color.COLORLESS), view = v, file = f, attachments = [])
+                    await self.message.delete()
+                    self.message = await interaction.followup.send(embed = discord.Embed(title = f"{self.players[0].name} wins!", description = "Endorse players or award them medals below.", color = config.Color.COLORLESS), view = v, file = f, attachments = [])
 
                 else:
                     e, v, f = self.render()
-                    await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                    await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
 
             else: 
                 e = discord.Embed()
@@ -980,7 +990,8 @@ class Game():
                 self.save()
 
                 e, v, f = self.render()
-                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
 
             else: 
                 e = discord.Embed()
@@ -1002,7 +1013,8 @@ class Game():
                 self.save()
 
                 e, v, f = self.render()
-                await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
 
             else: 
                 e = discord.Embed()
@@ -1047,7 +1059,8 @@ class Game():
                     self.save()
 
                     e, v, f = self.render()
-                    await self.message.edit(embed = e, view = v, file = f, attachments = [])
+                    await self.message.delete()
+                    self.message = await interaction.followup.send(embed = e, view = v, file = f, attachments = [])
                                 
                 select.callback = selectCallback
                 v.add_item(select)

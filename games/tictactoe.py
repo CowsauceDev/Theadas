@@ -23,6 +23,8 @@ import random
 
 from enum import Enum
 
+name = "Tic Tac Toe"
+
 description = '''
     This game is not yet implemented
 '''

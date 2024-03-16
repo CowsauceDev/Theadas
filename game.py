@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import games.bamboozle as bamboozle, games.gridlock as gridlock, games.whiteonblack as whiteonblack, games.monopoly as monopoly
+import games.bamboozle as bamboozle, games.gridlock as gridlock, games.whiteonblack as whiteonblack, games.trust as trust
 
 from enum import Enum
 from datetime import datetime
@@ -45,7 +45,7 @@ class User:
             self.card_holos:   List[gridlock.Game.Card | bamboozle.Game.Role] = user.card_holos
 
             self.expansions: List[whiteonblack.Expansion] = user.expansions
-            self.variants: List[monopoly.Variant] = user.variants
+            self.variants: List[trust.Variant] = user.variants
 
             self.tickets: int = user.tickets
             self.tokens:  int = user.tokens
@@ -78,7 +78,7 @@ class User:
             self.card_holos:  List[gridlock.Game.Card | bamboozle.Game.Role]  = []
 
             self.expansions:  List[whiteonblack.Expansion] = [whiteonblack.Expansion.BASE]
-            self.variants:  List[monopoly.Expansion] = [monopoly.Variant.BASE]
+            self.variants:  List[trust.Expansion] = [trust.Variant.BASE]
 
             self.tickets: int = 200
             self.tokens:  int = 0
@@ -100,12 +100,12 @@ class User:
             puzzle plays
             
             whiteonblack packs
-            monopoly variants
+            trust variants
 
             profile backgrounds
             holo arts for the tcg and bamboozle role cards
 
-            ai in chess, checkers, monopoly, bamboozle (ai always available in whiteonblack, )
+            ai in chess, checkers, trust, bamboozle (ai always available in whiteonblack, )
             strategy guides for all the strategy games
             endorse 2 people / game
 
@@ -113,7 +113,7 @@ class User:
 
 
 
-            subscription service gives access to all whiteonblack packs and monopoly variants, matchmaking priority, and n tokens / month
+            subscription service gives access to all whiteonblack packs and trust variants, matchmaking priority, and n tokens / month
             '''
 
             self.sr = {
@@ -224,7 +224,7 @@ class User:
                     }
                 },
 
-                "monopoly": {
+                "trust": {
                     "wins": 0,
                     "losses": 0,
 

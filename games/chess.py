@@ -23,6 +23,8 @@ import random
 
 from enum import Enum
 
+name = "Chess"
+
 description = '''
     This game is not yet implemented
 '''

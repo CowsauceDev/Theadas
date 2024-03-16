@@ -19,6 +19,7 @@
 import config 
 
 import discord
+from discord.ext import tasks
 from discord.ext.pages import Page, Paginator, PaginatorButton
 
 import math, random, os, pickle
@@ -26,6 +27,7 @@ from enum     import Enum
 from datetime import datetime
 from typing   import List
 
+_games = []
 if __name__ == "__main__":
     import games.bamboozle        as bamboozle
     import games.blackjack        as blackjack
@@ -35,11 +37,27 @@ if __name__ == "__main__":
     import games.gridlock         as gridlock
     import games.hangman          as hangman
     import games.holdem           as holdem
-    import games.monopoly         as monopoly
+    import games.trust         as trust
     import games.rps              as rps
     import games.slots            as slots
     import games.tictactoe        as tictactoe
     import games.twentyfortyeight as twentyfortyeight
+
+    _games = [
+        bamboozle,
+        blackjack,
+        whiteonblack,
+        checkers,
+        chess,
+        gridlock,
+        hangman,
+        holdem,
+        trust,
+        rps,
+        slots,
+        tictactoe,
+        twentyfortyeight
+    ]
 
 class Achievement(Enum):
     EAGER = ("Eager", "Play every game once.", "🏆")
@@ -78,7 +96,7 @@ class User:
             self.card_holos:   List[gridlock.Game.Card | bamboozle.Game.Role] = user.card_holos
 
             self.expansions: List[whiteonblack.Expansion] = user.expansions
-            self.variants: List[monopoly.Variant] = user.variants
+            self.variants: List[trust.Variant] = user.variants
 
             self.tickets: int = user.tickets
             self.tokens:  int = user.tokens
@@ -114,7 +132,7 @@ class User:
             self.card_holos:  List[gridlock.Game.Card | bamboozle.Game.Role]  = []
 
             self.expansions:  List[whiteonblack.Expansion] = [whiteonblack.Expansion.BASE]
-            self.variants:  List[monopoly.Expansion] = [monopoly.Variant.BASE]
+            self.variants:  List[trust.Expansion] = [trust.Variant.BASE]
 
             self.tickets: int = 200
             self.tokens:  int = 0
@@ -136,12 +154,12 @@ class User:
             puzzle plays
             
             whiteonblack packs
-            monopoly variants
+            trust variants
 
             profile backgrounds
             holo arts for the tcg and bamboozle role cards
 
-            ai in chess, checkers, monopoly, bamboozle (ai always available in whiteonblack, )
+            ai in chess, checkers, trust, bamboozle (ai always available in whiteonblack, holdem)
             strategy guides for all the strategy games
             endorse 2 people / game
 
@@ -149,7 +167,7 @@ class User:
 
 
 
-            subscription service gives access to all whiteonblack packs and monopoly variants, matchmaking priority, and n tokens / month
+            subscription service gives access to all whiteonblack packs and trust variants, matchmaking priority, and n tokens / month
             '''
 
             self.sr = {
@@ -180,7 +198,7 @@ class User:
                 "gridlock": [],
                 "hangman": [],
                 "holdem": [],
-                "monopoly": [],
+                "trust": [],
                 "rps": [],
                 "slots": [],
                 "tictactoe": [],
@@ -261,7 +279,7 @@ class User:
                     }
                 },
 
-                "monopoly": {
+                "trust": {
                     "wins": 0,
                     "losses": 0,
 
@@ -373,15 +391,30 @@ class Guild:
 
     def save(self): pickle.dump(self, open(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{self.id}.p", "wb"))
 
-bot = discord.Bot(activity = discord.Game("Play games with friends!"))
+bot = discord.Bot(activity = discord.Game("Play games with friends!"), intents = discord.Intents(members = True))
+
+@tasks.loop(hours = 24)
+async def reset_plays():
+    for i in os.listdir("data/users"):
+        user = User(i.split(".")[0])
+
+        user.plays["2048"] += (3 if user.plays["2048"] <= 0 else 0)
+        user.plays["hangman"] += (3 if user.plays["hangman"] <= 0 else 0)
+        user.chips += (100 if user.chips <= 0 else 0)
 
 @bot.event
 async def on_ready():
     await bot.register_commands(delete_existing = True)
+    reset_plays.start()
 
-info = bot.create_group("info", "See information about this game!")
+@bot.event
+async def on_guild_join(member: discord.Member):
+    if member.guild.id != "1101982625003995270": return
+    else: User(member.id).award()
+
+# info = bot.create_group("info", "See information about this game!")
 play = bot.create_group("play", "Play a game!")
-help = bot.create_group("help", "Learn how to use any command.")
+# help = bot.create_group("help", "Learn how to use any command.")
 
 @bot.slash_command(name = "ping", description = "Test the bot's latency.")
 async def pingCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
@@ -392,6 +425,596 @@ async def pingCommand(ctx, show: discord.Option(bool, "Select false to keep the 
     else: embed.color = discord.Color.green()
 
     await ctx.interaction.followup.send(embed = embed)
+
+@bot.slash_command(name = "summon", description = "Spend dice for a chance to win cool items!", guild_ids = [537839766381658134])
+async def summonCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
+    await ctx.defer(ephemeral = not show)
+    message: discord.Message = None
+
+    domainSelect = discord.ui.Select(placeholder = "PICK A DOMAIN TO SUMMON FROM", options = [
+        discord.SelectOption(label = "Logos", value = "logos"),
+        discord.SelectOption(label = "Ethos", value = "ethos"),
+        discord.SelectOption(label = "Pathos", value = "pathos")
+    ])
+
+    async def domainCallback(interaction):
+        await interaction.response.defer(ephemeral = not show)
+        user = User(ctx.author.id)
+
+        if interaction.user.id != ctx.author.id:
+            await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+            return
+        
+        match domainSelect.values[0]:
+            case "logos":
+                user.dice -= 1
+                if random.randint(1, 20) == 20:
+                    choice = random.choice(["hangman", "2048"])
+
+                    user.plays[choice] += 10
+                    user.save()
+
+                    await message.edit(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = f"🐼PANDA!!\nThey summoned **10 {choice} plays**!", color = config.Color.COLORLESS))
+                else:
+                    tickets  = random.randint(0, 50)
+                    tokens   = random.randint(0, 20)
+                    chips    = random.randint(0, 100)
+                    xp       = random.randint(15, 60)
+                    dominoes = random.randint(0, 2)
+                    tiles    = random.randint(0, 2)
+                    chits    = random.randint(0, 2)
+
+                    user.tickets  += tickets
+                    user.tokens   += tokens
+                    user.chips    += chips
+                    user.xp       += xp
+                    user.dominoes += dominoes
+                    user.tiles    += tiles
+                    user.chits    += chits
+
+                    summon = f"{xp} experience"
+                    if tickets >= 0: summon  += f", {tickets} tickets"
+                    if tokens >= 0: summon   += f", {tokens} tokens"
+                    if chips >= 0: summon    += f", {chips} chips"
+                    if dominoes >= 0: summon += f", {dominoes} dominoes"
+                    if tiles >= 0: summon    += f", {tiles} tiles"
+                    if chits >= 0: summon    += f", {chits} chits"
+
+                    user.save()
+                    await message.edit(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = f"They summoned **{summon}**!", color = config.Color.COLORLESS))
+
+            case "ethos":
+                user.dice -= 2
+                if random.randint(1, 20) == 20:
+                    choice = random.choice(["Early Supporter", "Summon Master"])
+
+                    user.titles.append(choice)
+                    user.save()
+
+                    await message.edit(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = f"🐼PANDA!!\nThey summoned the **\"{choice}\" title**!", color = config.Color.COLORLESS))
+                else:
+                    tickets  = random.randint(0, 50)
+                    tokens   = random.randint(0, 20)
+                    chips    = random.randint(0, 100)
+                    xp       = random.randint(15, 60)
+                    dominoes = random.randint(0, 2)
+                    tiles    = random.randint(0, 2)
+                    chits    = random.randint(0, 2)
+
+                    user.tickets  += tickets
+                    user.tokens   += tokens
+                    user.chips    += chips
+                    user.xp       += xp
+                    user.dominoes += dominoes
+                    user.tiles    += tiles
+                    user.chits    += chits
+
+                    summon = f"{xp} experience"
+                    if tickets >= 0: summon  += f", {tickets} tickets"
+                    if tokens >= 0: summon   += f", {tokens} tokens"
+                    if chips >= 0: summon    += f", {chips} chips"
+                    if dominoes >= 0: summon += f", {dominoes} dominoes"
+                    if tiles >= 0: summon    += f", {tiles} tiles"
+                    if chits >= 0: summon    += f", {chits} chits"
+
+                    user.save()
+                    await message.edit(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = f"They summoned **{summon}**!", color = config.Color.COLORLESS))
+            
+            case "pathos":
+                user.dice -= 3
+                if random.randint(1, 20) == 20:
+                    if user.endorses > 1: await message.edit(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = f"🐼PANDA!!\nThey summoned **Double Medals**! (already owned)", color = config.Color.COLORLESS))
+                    else:
+                        user.endorses = 2
+                        user.save()
+
+                        await message.edit(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = f"🐼PANDA!!\nThey summoned the **Double Medals**!", color = config.Color.COLORLESS))
+                else:
+                    tickets  = random.randint(0, 50)
+                    tokens   = random.randint(0, 20)
+                    chips    = random.randint(0, 100)
+                    xp       = random.randint(15, 60)
+                    dominoes = random.randint(0, 2)
+                    tiles    = random.randint(0, 2)
+                    chits    = random.randint(0, 2)
+
+                    user.tickets  += tickets
+                    user.tokens   += tokens
+                    user.chips    += chips
+                    user.xp       += xp
+                    user.dominoes += dominoes
+                    user.tiles    += tiles
+                    user.chits    += chits
+
+                    summon = f"{xp} experience"
+                    if tickets >= 0: summon  += f", {tickets} tickets"
+                    if tokens >= 0: summon   += f", {tokens} tokens"
+                    if chips >= 0: summon    += f", {chips} chips"
+                    if dominoes >= 0: summon += f", {dominoes} dominoes"
+                    if tiles >= 0: summon    += f", {tiles} tiles"
+                    if chits >= 0: summon    += f", {chits} chits"
+
+                    user.save()
+                    await message.edit(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = f"They summoned **{summon}**!", color = config.Color.COLORLESS))     
+            case _: pass
+        # domain = domainSelect.values[0]
+
+        # smallButton   = discord.ui.Button(label = "SMALL", style = discord.ButtonStyle.secondary)
+        # largeButton   = discord.ui.Button(label = "LARGE", style = discord.ButtonStyle.blurple)
+        # premiumButton = discord.ui.Button(label = "PREMIUM", style = discord.ButtonStyle.success)
+
+        # async def smallCallback(interaction):
+        #     await interaction.response.defer(ephemeral = not show)
+
+        #     await message.edit(embed = discord.Embed(), view = discord.ui.View(smallButton, largeButton, premiumButton))
+
+        # async def largeCallback(interaction):
+        #     await interaction.response.defer(ephemeral = not show)
+
+        #     await message.edit(embed = discord.Embed(), view = discord.ui.View(smallButton, largeButton, premiumButton))
+
+        # async def premiumCallback(interaction):
+        #     await interaction.response.defer(ephemeral = not show)
+
+        #     await message.edit(embed = discord.Embed(), view = discord.ui.View(smallButton, largeButton, premiumButton))
+
+        # smallButton.callback, largeButton.callback, premiumButton.callback = smallCallback, largeCallback, premiumCallback
+        # await message.edit(embed = discord.Embed(), view = discord.ui.View(smallButton, largeButton, premiumButton))
+
+    domainSelect.callback = domainCallback
+    message = await ctx.interaction.followup.send(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = "Start your summon by choosing a domain. Domains determine what you can summon if you hit a panda (5% chance). Domains rotate occasionally, so make sure to check back frequently!\n## Domains\n**All domains:** tickets, tokens, xp (guaranteed), chips, dominoes, tiles, chits\n**LOGOS (1 dice):** 10 Hangman plays, 10 2048 plays\n**ETHOS (2 dice)** \"Early Supporter\" title, \"Summon Master\" title\n**PATHOS (3 dice):** award an extra medal each game"), view = discord.ui.View(domainSelect))
+
+@bot.slash_command(name = "hack", description = "Change a user's profile.", guild_ids = [1101982625003995270])
+async def hackCommand(ctx, u: discord.Option(discord.User, "User to hack."), field: discord.Option(str, "Which field should be hacked?", choices = ["Tickets", "Tokens", "Chips", "Dice", "Dominoes", "Tiles", "Chits", "Experience", "Turing", "Achievements", "Priority", "Backgrounds", "BAMBOOZLE!", "Checkers", "Chess", "Gridlock", "2048", "Hangman"])):
+    await ctx.defer(ephemeral = True)
+    user: User = User(u.id)
+
+    if user.id in config.owners:
+        match field:
+            case "Tickets":
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "🔟", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.tickets += 1
+                    user.save()
+                async def plusTenCallback(_):     
+                    user.tickets += 10
+                    user.save()
+                async def plusFiftyCallback(_):   
+                    user.tickets += 50
+                    user.save()
+                async def plusHundredCallback(_): 
+                    user.tickets += 100
+                    user.save()
+
+                async def minusOneCallback(_):     user.tickets -= 1
+                async def minusTenCallback(_):     user.tickets -= 10
+                async def minusFiftyCallback(_):   user.tickets -= 50
+                async def minusHundredCallback(_): user.tickets -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Tickets.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Tokens": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "🔟", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.tokens += 1
+                    user.save()
+                async def plusTenCallback(_):     
+                    user.tokens += 10
+                    user.save()
+                async def plusFiftyCallback(_):   
+                    user.tokens += 50
+                    user.save()
+                async def plusHundredCallback(_): 
+                    user.tokens += 100
+                    user.save()
+
+                async def minusOneCallback(_):     user.tokens -= 1
+                async def minusTenCallback(_):     user.tokens -= 10
+                async def minusFiftyCallback(_):   user.tokens -= 50
+                async def minusHundredCallback(_): user.tokens -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Tokens.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Chips": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.chips += 1
+                    user.save()
+                async def plusTenCallback(_):     
+                    user.chips += 10
+                    user.save()
+                async def plusFiftyCallback(_):   
+                    user.chips += 50
+                    user.save()
+                async def plusHundredCallback(_): 
+                    user.chips += 100
+                    user.save()
+
+                async def minusOneCallback(_):     user.chips -= 1
+                async def minusTenCallback(_):     user.chips -= 10
+                async def minusFiftyCallback(_):   user.chips -= 50
+                async def minusHundredCallback(_): user.chips -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Chips.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Dice": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.dice += 1
+                    user.save()
+                async def plusTenCallback(_):     
+                    user.dice += 10
+                    user.save()
+                async def plusFiftyCallback(_):   
+                    user.dice += 50
+                    user.save()
+                async def plusHundredCallback(_): 
+                    user.dice += 100
+                    user.save()
+
+                async def minusOneCallback(_):     user.dice -= 1
+                async def minusTenCallback(_):     user.dice -= 10
+                async def minusFiftyCallback(_):   user.dice -= 50
+                async def minusHundredCallback(_): user.dice -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Dice.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Dominoes": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.dominoes += 1
+                    user.save()
+                async def plusTenCallback(_):     
+                    user.dominoes += 10
+                    user.save()
+                async def plusFiftyCallback(_):   
+                    user.dominoes += 50
+                    user.save()
+                async def plusHundredCallback(_): 
+                    user.dominoes += 100
+                    user.save()
+
+                async def minusOneCallback(_):     user.dominoes -= 1
+                async def minusTenCallback(_):     user.dominoes -= 10
+                async def minusFiftyCallback(_):   user.dominoes -= 50
+                async def minusHundredCallback(_): user.dominoes -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Dominoes.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Tiles": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.tiles += 1
+                    user.save()
+                async def plusTenCallback(_):     
+                    user.tiles += 10
+                    user.save()
+                async def plusFiftyCallback(_):   
+                    user.tiles += 50
+                    user.save()
+                async def plusHundredCallback(_): 
+                    user.tiles += 100
+                    user.save()
+
+                async def minusOneCallback(_):     user.tiles -= 1
+                async def minusTenCallback(_):     user.tiles -= 10
+                async def minusFiftyCallback(_):   user.tiles -= 50
+                async def minusHundredCallback(_): user.tiles -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Tiles.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Chits": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.chits += 1
+                    user.save()
+                async def plusTenCallback(_):     
+                    user.chits += 10
+                    user.save()
+                async def plusFiftyCallback(_):   
+                    user.chits += 50
+                    user.save()
+                async def plusHundredCallback(_): 
+                    user.chits += 100
+                    user.save()
+
+                async def minusOneCallback(_):     user.chits -= 1
+                async def minusTenCallback(_):     user.chits -= 10
+                async def minusFiftyCallback(_):   user.chits -= 50
+                async def minusHundredCallback(_): user.chits -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Chits.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Experience": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.xp += 1
+                    user.save()
+                async def plusTenCallback(_):     
+                    user.xp += 10
+                    user.save()
+                async def plusFiftyCallback(_):   
+                    user.xp += 50
+                    user.save()
+                async def plusHundredCallback(_): 
+                    user.xp += 100
+                    user.save()
+
+                async def minusOneCallback(_):     user.xp -= 1
+                async def minusTenCallback(_):     user.xp -= 10
+                async def minusFiftyCallback(_):   user.xp -= 50
+                async def minusHundredCallback(_): user.xp -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Experience.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Turing":
+                select = discord.ui.Select(placeholder = "Turing to give/remove", options = [
+                    discord.SelectOption(label = "Chess", value = "chess"),
+                    discord.SelectOption(label = "Checkers", value = "checkers"),
+                    discord.SelectOption(label = "Trust", value = "trust"),
+                    discord.SelectOption(label = "BAMBOOZLE!", value = "bamboozle"),
+                    discord.SelectOption(label = "White on Black", value = "wob"),
+                    discord.SelectOption(label = "Hold 'Em", value = "holdem")
+                ])
+
+                async def selectCallback(_):
+                    match select.values:
+                        case "chess": 
+                            if "chess" in user.turing: user.turing.remove("chess")
+                            else: user.turing.append("chess")
+                        
+                        case "checkers": 
+                            if "checkers" in user.turing: user.turing.remove("checkers")
+                            else: user.turing.append("checkers")
+
+                        case "trust": 
+                            if "trust" in user.turing: user.turing.remove("trust")
+                            else: user.turing.append("trust")
+
+                        case "bamboozle": 
+                            if "bamboozle" in user.turing: user.turing.remove("bamboozle")
+                            else: user.turing.append("bamboozle")
+
+                        case "wob": 
+                            if "wob" in user.turing: user.turing.remove("wob")
+                            else: user.turing.append("wob")
+
+                        case "holdem": 
+                            if "holdem" in user.turing: user.turing.remove("holdem")
+                            else: user.turing.append("holdem")
+
+                        case _: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+
+                select.callback = selectCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Turing Access.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(select), ephemeral = True)
+
+            case "Achievements":
+                message: discord.Message = None
+                select = discord.ui.Select(placeholder = "Where to change achievments from...", options = [
+                    discord.SelectOption(label = "General", value = "theadas"),
+                ])
+
+                async def selectCallback(interaction):
+                    match select.values[0]:
+                        case "theadas":
+                            s = discord.ui.Select(placeholder = "Where to change achievments from...", options = [
+                                discord.SelectOption(label = "Contributor", value = "contributor"),
+                            ])
+
+                            async def sCallback(_):
+                                match s.values:
+                                    case "contributor": 
+                                        if "contributor" in user.achievements["theadas"]: user.achievements["theadas"].remove("contributor")
+                                        else: user.achievements["theadas"].append("contributor")
+
+                                    case _: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                            
+                            s.callback = sCallback
+                            await message.edit(embed = discord.Embed(title = f"You are hacking {u.name}'s Achievements.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(s), ephemeral = True)
+
+                select.callback = selectCallback
+                message = await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Achievements.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(select), ephemeral = True)
+
+            case "Priority": 
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True), ephemeral = True)
+                return
+
+            case "Backgrounds": 
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True), ephemeral = True)
+                return
+
+            case "BAMBOOZLE!": 
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True), ephemeral = True)
+                return
+
+            case "Checkers": 
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True), ephemeral = True)
+                return
+
+            case "Chess": 
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True), ephemeral = True)
+                return
+
+            case "Gridlock": 
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True), ephemeral = True)
+                return
+
+            case "2048": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.plays["2048"] += 1
+                    user.save()
+
+                async def plusTenCallback(_):     
+                    user.plays["2048"] += 10
+                    user.save()
+
+                async def plusFiftyCallback(_):   
+                    user.plays["2048"] += 50
+                    user.save()
+
+                async def plusHundredCallback(_): 
+                    user.plays["2048"] += 100
+                    user.save()
+
+
+                async def minusOneCallback(_):     user.plays["2048"] -= 1
+                async def minusTenCallback(_):     user.plays["2048"] -= 10
+                async def minusFiftyCallback(_):   user.plays["2048"] -= 50
+                async def minusHundredCallback(_): user.plays["2048"] -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s 2048 Plays.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case "Hangman": 
+                plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusTen     = discord.ui.Button(label = "🔟", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusFifty   = discord.ui.Button(label = "5️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+                plusHundred = discord.ui.Button(label = "1️⃣0️⃣0️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
+
+                minusOne     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusTen     = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusFifty   = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+                minusHundred = discord.ui.Button(label = "1️⃣", emoji = "➖", style = discord.ButtonStyle.secondary, row = 1)
+
+                async def plusOneCallback(_):     
+                    user.plays["hangman"] += 1
+                    user.save()
+
+                async def plusTenCallback(_):     
+                    user.plays["hangman"] += 10
+                    user.save()
+
+                async def plusFiftyCallback(_):   
+                    user.plays["hangman"] += 50
+                    user.save()
+
+                async def plusHundredCallback(_): 
+                    user.plays["hangman"] += 100
+                    user.save()
+
+
+                async def minusOneCallback(_):     user.plays["hangman"] -= 1
+                async def minusTenCallback(_):     user.plays["hangman"] -= 10
+                async def minusFiftyCallback(_):   user.plays["hangman"] -= 50
+                async def minusHundredCallback(_): user.plays["hangman"] -= 100
+
+                plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
+                await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Hangman Plays.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
+
+            case _: 
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
+    else: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
 
 # pyright: reportInvalidTypeForm=false
 @bot.slash_command(name = "profile", description = "View a user's profile.")
@@ -405,7 +1028,7 @@ async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank 
         discord.SelectOption(label = "Backgrounds", value = "backgrounds"),
         discord.SelectOption(label = "Holo Cards", value = "holos"),
         discord.SelectOption(label = "CAH Packs", value = "whiteonblack"),
-        discord.SelectOption(label = "monopoly Variants", value = "monopoly"),
+        discord.SelectOption(label = "trust Variants", value = "trust"),
         discord.SelectOption(label = "Achievements", value = "achievements"),
         discord.SelectOption(label = "Medals", value = "medals")
     ])
@@ -422,7 +1045,7 @@ async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank 
             case "backgrounds": pass
             case "holos": pass
             case "whiteonblack": pass
-            case "monopoly": pass
+            case "trust": pass
             case _: pass
 
     async def changeCallback(interaction):
@@ -480,7 +1103,7 @@ async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank 
     if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: embed.add_field(name = "Chess",  value = f"Skill Rating (SR): {math.floor(u.sr['chess'])}\nGames Played: {u.stats['chess']['wins'] + u.stats['chess']['losses']}\nGames Won: {u.stats['chess']['wins']} ({math.floor(u.stats['chess']['wins'] / (u.stats['chess']['wins'] + u.stats['chess']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('chess')}\nMedals: ```Knowledgeable: {u.stats['chess']['medals']['knowledgeable']}\nRisk Taker: {u.stats['chess']['medals']['risk taker']}\nPlayed fast: {u.stats['chess']['medals']['played Fast']}```", inline = False)
     if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: embed.add_field(name = "Gridlock",  value = f"Skill Rating (SR): {math.floor(u.sr['gridlock'])}\nGames Played: {u.stats['gridlock']['wins'] + u.stats['gridlock']['losses']}\nGames Won: {u.stats['gridlock']['wins']} ({math.floor(u.stats['gridlock']['wins'] / (u.stats['gridlock']['wins'] + u.stats['gridlock']['losses'])) * 100})% Winrate\nHolo Cards Owned: {gridlock_holos}\n**Packs:** {u.packs[gridlock.Pack.SMALL]} Small, {u.packs[gridlock.Pack.LARGE]} Large, {u.packs[gridlock.Pack.PREMIUM]} Premium\n\nAchievements: {u.achievement_str('gridlock')}\nMedals: ```Interesting Deck: {u.stats['gridlock']['medals']['interesting deck']}\nPlayed Well: {u.stats['gridlock']['medals']['played well']}\nPlayed Fast: {u.stats['gridlock']['medals']['played fast']}```", inline = False)
     if u.stats["hangman"]["wins"] + u.stats["hangman"]["losses"] > 0: embed.add_field(name = "Hangman",  value = f"Games Played: {u.stats['hangman']['wins'] + u.stats['hangman']['losses']}\n\nGames Won: {u.stats['hangman']['wins']} ({math.floor(u.stats['hangman']['wins'] / (u.stats['hangman']['wins'] + u.stats['hangman']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('hangman')}", inline = False)
-    if u.stats["monopoly"]["wins"] + u.stats["monopoly"]["losses"] > 0: embed.add_field(name = "monopoly",  value = f"Games Played: {u.stats['monopoly']['wins'] + u.stats['monopoly']['losses']}\nGames Won: {u.stats['monopoly']['wins']} ({math.floor(u.stats['monopoly']['wins'] / (u.stats['monopoly']['wins'] + u.stats['monopoly']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('monopoly')}\nMedals: ```Lucky: {u.stats['monopoly']['medals']['lucky']}\nSmart Investor: {u.stats['monopoly']['medals']['smart investor']}\nNegotiator: {u.stats['monopoly']['medals']['negotiator']}```", inline = False)
+    if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: embed.add_field(name = "trust",  value = f"Games Played: {u.stats['trust']['wins'] + u.stats['trust']['losses']}\nGames Won: {u.stats['trust']['wins']} ({math.floor(u.stats['trust']['wins'] / (u.stats['trust']['wins'] + u.stats['trust']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('trust')}\nMedals: ```Lucky: {u.stats['trust']['medals']['lucky']}\nSmart Investor: {u.stats['trust']['medals']['smart investor']}\nNegotiator: {u.stats['trust']['medals']['negotiator']}```", inline = False)
     if u.stats["rps"]["wins"] + u.stats["rps"]["losses"] > 0: embed.add_field(name = "Rock Paper Scissors",  value = f"Games Played: {u.stats['rps']['wins'] + u.stats['rps']['losses']}\n\nGames Won: {u.stats['rps']['wins']} ({math.floor(u.stats['rps']['wins'] / (u.stats['rps']['wins'] + u.stats['rps']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('rps')}", inline = False)
     if u.stats["slots"]["wins"] + u.stats["slots"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['slots']['wins'] + u.stats['slots']['losses']}\n\nAchievements: {u.achievement_str('slots')}", inline = False)
     if u.stats["tictactoe"]["wins"] + u.stats["tictactoe"]["losses"] > 0: embed.add_field(name = "Tic Tac Toe",  value = f"Games Played: {u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses']}\n\nGames Won: {u.stats['tictactoe']['wins']} ({math.floor(u.stats['tictactoe']['wins'] / (u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('tictactoe')}", inline = False)
@@ -551,9 +1174,9 @@ async def shopCommand(ctx):
         [
             Page(embeds = [discord.Embed(title = "Currency Shop", description = "**50 Chips:** 5 🎟️\n**1 Dice:** 456 🎟️ or 142 🪙\n**1 Domino:** 325 🪙\n**1 Tile** 245 🎟️ or 76 🪙\n**Chit:** 648 🪙\n## Tokens (coming soon)\n**🪙 568:** $2.99 ($0.49 first purchase)\n**🪙 1,687:** $4.99 ($2.99 first purchase)\n**🪙 2,562:** $14.99 ($4.99 first purchase)", color = config.Color.COLORLESS).set_footer(text = config.footer)], custom_view = currencyView),
             Page(embeds = [discord.Embed(title = "Dice Shop",     description = "**1wk Queue Priority:** Queue Coming Soon!\n**5 Hangman Plays:** 1 dice\n**5 2048 Plays:** 1 dice\n## Gridlock Packs\n**Small Pack:** 1 dice\n**Large Pack:** 2 dice\n**Premium Pack:** 3 dice", color = config.Color.COLORLESS).set_footer(text = config.footer)], custom_view = diceView),
-            Page(embeds = [discord.Embed(title = "Domino Shop",   description = "**White on Black Packs:** Coming soon!\n**Monopoly Variants:** Coming soon!", color = config.Color.COLORLESS).set_footer(text = config.footer)], custom_view = dominoView),
+            Page(embeds = [discord.Embed(title = "Domino Shop",   description = "**White on Black Packs:** Coming soon!\n**Trust Variants:** Coming soon!", color = config.Color.COLORLESS).set_footer(text = config.footer)], custom_view = dominoView),
             Page(embeds = [discord.Embed(title = "Tile Shop",     description = "**Profile Backgrounds:** Coming soon!\n**Holo Arts:** Coming soon!", color = config.Color.COLORLESS).set_footer(text = config.footer)], custom_view = tileView),
-            Page(embeds = [discord.Embed(title = "Chit Shop",     description = "**x2 Medals:** 3 Chits\n## Turing (play vs. cpu)\n**Chess:** Coming soon!\n**Checkers:** Coming soon!\n**Monopoly:** Coming soon!\n**BAMBOOZLE!:** Coming soon!\n## Strategy Guides:\n**Chess:** Coming soon!\n**Checkers:** Coming soon!\n**Gridlock:** Coming soon!", color = config.Color.COLORLESS).set_footer(text = config.footer)], custom_view = chitView)
+            Page(embeds = [discord.Embed(title = "Chit Shop",     description = "**x2 Medals:** 3 Chits\n## Turing (play vs. cpu)\n**Chess:** Coming soon!\n**Checkers:** Coming soon!\n**Trust:** Coming soon!\n**BAMBOOZLE!:** Coming soon!\n## Strategy Guides:\n**Chess:** Coming soon!\n**Checkers:** Coming soon!\n**Gridlock:** Coming soon!", color = config.Color.COLORLESS).set_footer(text = config.footer)], custom_view = chitView)
         ],
         show_indicator = True,
         use_default_buttons = False,
@@ -686,6 +1309,96 @@ async def settingsCommand(ctx, show: discord.Option(bool, "Select false to keep 
     select.callback = selectCallback
     message = await ctx.interaction.followup.send(embed = discord.Embed(title = f"{ctx.guild.name} Settings", description = "**Content Sharing**: " + ("Enabled" if guild.sharing else "Disabled"), color = config.Color.COLORLESS).set_footer(text = f"Version: {config.version}"), view = discord.ui.View(select))
 
+@bot.slash_command(name = "help", description = "Learn how to use my commands!")
+async def helpCommand(ctx, category: discord.Option(str, "pick a command or game to get help with") = None, show: discord.Option(bool, "Select false to keep the response private.") = False):
+    await ctx.defer(ephemeral = not show)
+    if not category:
+        default:  List[discord.Embed] = [discord.Embed(title = "Theadas Help", description = "Below is a list of my games and commands along with their descriptions. For more details or usage for one game or command, use /help <category> where category is the game or command.", color = config.Color.COLORLESS)]
+        commands: List[discord.Embed] = [discord.Embed(title = "Commands", color = config.Color.COLORLESS)]
+        games:    List[discord.Embed] = [discord.Embed(title = "Games",    color = config.Color.COLORLESS)]
+        n: int = 0
+
+        for i in bot.application_commands:
+            if n >= 25: commands.append(discord.Embed(color = config.Color.COLORLESS))
+            commands[-1].add_field(name = i.name, value = i.description if i.description else i.name)
+            n += 1
+        
+        n = 0
+        for i in _games: 
+            if n >= 25: games.append(discord.Embed(color = config.Color.COLORLESS))
+            games[-1].add_field(name = i.name, value = i.description if i.description else i.name)
+            n += 1
+
+        for i in commands: default.append(i)
+        for i in games:    default.append(i)
+        default.append(discord.Embed(description = config.footer, color = config.Color.COLORLESS))
+
+        await ctx.interaction.followup.send(embeds = default)
+        return
+
+    match category.lower():
+        # COMMANDS
+        case "ping": ctx.interaction.followup.send(embed = discord.Embed(title = "Ping Command", description = "Test the bot's response time.\n**Usage:** /ping", color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "profile": ctx.interaction.followup.send(embed = discord.Embed(title = "Profile Command", description = "View a user's profile. If you do not specify a user, your own will be shown.\n**Usage:** /profile [user]", color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "leaderboard": ctx.interaction.followup.send(embed = discord.Embed(title = "Leaderboard Command", description = "See how you stack up against other server members!\n**Usage:** /leaderboard", color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "board": ctx.interaction.followup.send(embed = discord.Embed(title = "Leaderboard Command", description = "See how you stack up against other server members!\n**Usage:** /leaderboard", color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "credits": ctx.interaction.followup.send(embed = discord.Embed(title = "Credits Command", description = "\n**Usage:** /credits", color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "shop": ctx.interaction.followup.send(embed = discord.Embed(title = "Shop Command", description = "\n**Usage:** /shop [category]", color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "support": ctx.interaction.followup.send(embed = discord.Embed(title = "Support Command", description = "\n**Usage:** /support", color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "play": ctx.interaction.followup.send(embed = discord.Embed(title = "Play Command", description = "\n**Usage:** /play <game>", color = config.Color.COLORLESS).set_footer(text = config.footer))
+        
+        # GAMES
+        case "bamboozle": ctx.interaction.followup.send(discord.Embed(title = "BAMBOOZLE!", description = bamboozle.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "boozle": ctx.interaction.followup.send(discord.Embed(title = "BAMBOOZLE!", description = bamboozle.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "blackjack": ctx.interaction.followup.send(discord.Embed(title = "Blackjack", description = blackjack.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "bj": ctx.interaction.followup.send(discord.Embed(title = "Blackjack", description = blackjack.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "whiteonblack": ctx.interaction.followup.send(discord.Embed(title = "White on Black", description = whiteonblack.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "white on black": ctx.interaction.followup.send(discord.Embed(title = "White on Black", description = whiteonblack.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "wob": ctx.interaction.followup.send(discord.Embed(title = "White on Black", description = whiteonblack.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "cah": ctx.interaction.followup.send(discord.Embed(title = "White on Black", description = whiteonblack.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "checkers": ctx.interaction.followup.send(discord.Embed(title = "Checkers", description = checkers.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "chess": ctx.interaction.followup.send(discord.Embed(title = "Chess", description = chess.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "gridlock": ctx.interaction.followup.send(discord.Embed(title = "Gridlock", description = gridlock.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "gridlocktcg": ctx.interaction.followup.send(discord.Embed(title = "Gridlock", description = gridlock.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "gridlock tcg": ctx.interaction.followup.send(discord.Embed(title = "Gridlock", description = gridlock.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "tcg": ctx.interaction.followup.send(discord.Embed(title = "Gridlock", description = gridlock.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "hangman": ctx.interaction.followup.send(discord.Embed(title = "Hangman", description = hangman.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "holdem": ctx.interaction.followup.send(discord.Embed(title = "Holdem", description = holdem.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "hold em": ctx.interaction.followup.send(discord.Embed(title = "Holdem", description = holdem.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "hold 'em": ctx.interaction.followup.send(discord.Embed(title = "Holdem", description = holdem.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "trust": ctx.interaction.followup.send(discord.Embed(title = "trust", description = trust.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "rockpaperscissors": ctx.interaction.followup.send(discord.Embed(title = "Rock Paper Scissors", description = rps.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "rps": ctx.interaction.followup.send(discord.Embed(title = "Rock Paper Scissors", description = rps.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "slots": ctx.interaction.followup.send(discord.Embed(title = "Slots", description = slots.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "tactactoe": ctx.interaction.followup.send(discord.Embed(title = "Tic Tac Toe", description = tictactoe.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "twentyfortyeight": ctx.interaction.followup.send(discord.Embed(title = '2048', description = twentyfortyeight.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "twenty forty eight": ctx.interaction.followup.send(discord.Embed(title = '2048', description = twentyfortyeight.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        case "2048": ctx.interaction.followup.send(discord.Embed(title = '2048', description = twentyfortyeight.description, color = config.Color.COLORLESS).set_footer(text = config.footer))
+        
+        # DEFAULT
+        case _: 
+            default:  List[discord.Embed] = [discord.Embed(title = "Theadas Help", description = "Below is a list of my games and commands along with their descriptions. For more details or usage for one game or command, use /help <category> where category is the game or command.", color = config.Color.COLORLESS)]
+            commands: List[discord.Embed] = [discord.Embed(title = "Commands", color = config.Color.COLORLESS)]
+            games:    List[discord.Embed] = [discord.Embed(title = "Games",    color = config.Color.COLORLESS)]
+            n: int = 0
+
+            for i in bot.application_commands:
+                print(True)
+                if n >= 25: commands.append(discord.Embed(color = config.Color.COLORLESS))
+                commands[-1].add_field(name = i.name, value = i.description if i.description else i.name, color = config.Color.COLORLESS)
+                n += 1
+            
+            n = 0
+            for i in _games: 
+                if n >= 25: games.append(discord.Embed(color = config.Color.COLORLESS))
+                games[-1].add_field(name = i.name, value = i.description if i.description else i.name, color = config.Color.COLORLESS)
+                n += 1
+
+            for i in commands: default.append(i)
+            for i in games:    default.append(i)
+
+            await ctx.interaction.followup.send(embeds = default)
+
 @bot.slash_command(name = "leaderboard", description = "See how you stack up against other server members!")
 async def leaderboardCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
@@ -731,7 +1444,7 @@ async def profileUserCommand(ctx, user: discord.Member):
         discord.SelectOption(label = "Backgrounds", value = "backgrounds"),
         discord.SelectOption(label = "Holo Cards", value = "holos"),
         discord.SelectOption(label = "CAH Packs", value = "whiteonblack"),
-        discord.SelectOption(label = "monopoly Variants", value = "monopoly"),
+        discord.SelectOption(label = "trust Variants", value = "trust"),
         discord.SelectOption(label = "Achievements", value = "achievements"),
         discord.SelectOption(label = "Medals", value = "medals")
     ])
@@ -748,7 +1461,7 @@ async def profileUserCommand(ctx, user: discord.Member):
             case "backgrounds": pass
             case "holos": pass
             case "whiteonblack": pass
-            case "monopoly": pass
+            case "trust": pass
             case _: pass
 
     async def changeCallback(interaction):
@@ -807,7 +1520,7 @@ async def profileUserCommand(ctx, user: discord.Member):
     if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: embed.add_field(name = "Chess",  value = f"Skill Rating (SR): {math.floor(u.sr['chess'])}\nGames Played: {u.stats['chess']['wins'] + u.stats['chess']['losses']}\nGames Won: {u.stats['chess']['wins']} ({math.floor(u.stats['chess']['wins'] / (u.stats['chess']['wins'] + u.stats['chess']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('chess')}\nMedals: ```Knowledgeable: {u.stats['chess']['medals']['knowledgeable']}\nRisk Taker: {u.stats['chess']['medals']['risk taker']}\nPlayed fast: {u.stats['chess']['medals']['played Fast']}```", inline = False)
     if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: embed.add_field(name = "Gridlock",  value = f"Skill Rating (SR): {math.floor(u.sr['gridlock'])}\nGames Played: {u.stats['gridlock']['wins'] + u.stats['gridlock']['losses']}\nGames Won: {u.stats['gridlock']['wins']} ({math.floor(u.stats['gridlock']['wins'] / (u.stats['gridlock']['wins'] + u.stats['gridlock']['losses'])) * 100})% Winrate\nHolo Cards Owned: {gridlock_holos}\n**Packs:** {u.packs[gridlock.Pack.SMALL]} Small, {u.packs[gridlock.Pack.LARGE]} Large, {u.packs[gridlock.Pack.PREMIUM]} Premium\n\nAchievements: {u.achievement_str('gridlock')}\nMedals: ```Interesting Deck: {u.stats['gridlock']['medals']['interesting deck']}\nPlayed Well: {u.stats['gridlock']['medals']['played well']}\nPlayed Fast: {u.stats['gridlock']['medals']['played fast']}```", inline = False)
     if u.stats["hangman"]["wins"] + u.stats["hangman"]["losses"] > 0: embed.add_field(name = "Hangman",  value = f"Games Played: {u.stats['hangman']['wins'] + u.stats['hangman']['losses']}\n\nGames Won: {u.stats['hangman']['wins']} ({math.floor(u.stats['hangman']['wins'] / (u.stats['hangman']['wins'] + u.stats['hangman']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('hangman')}", inline = False)
-    if u.stats["monopoly"]["wins"] + u.stats["monopoly"]["losses"] > 0: embed.add_field(name = "monopoly",  value = f"Games Played: {u.stats['monopoly']['wins'] + u.stats['monopoly']['losses']}\nGames Won: {u.stats['monopoly']['wins']} ({math.floor(u.stats['monopoly']['wins'] / (u.stats['monopoly']['wins'] + u.stats['monopoly']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('monopoly')}\nMedals: ```Lucky: {u.stats['monopoly']['medals']['lucky']}\nSmart Investor: {u.stats['monopoly']['medals']['smart investor']}\nNegotiator: {u.stats['monopoly']['medals']['negotiator']}```", inline = False)
+    if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: embed.add_field(name = "trust",  value = f"Games Played: {u.stats['trust']['wins'] + u.stats['trust']['losses']}\nGames Won: {u.stats['trust']['wins']} ({math.floor(u.stats['trust']['wins'] / (u.stats['trust']['wins'] + u.stats['trust']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('trust')}\nMedals: ```Lucky: {u.stats['trust']['medals']['lucky']}\nSmart Investor: {u.stats['trust']['medals']['smart investor']}\nNegotiator: {u.stats['trust']['medals']['negotiator']}```", inline = False)
     if u.stats["rps"]["wins"] + u.stats["rps"]["losses"] > 0: embed.add_field(name = "Rock Paper Scissors",  value = f"Games Played: {u.stats['rps']['wins'] + u.stats['rps']['losses']}\n\nGames Won: {u.stats['rps']['wins']} ({math.floor(u.stats['rps']['wins'] / (u.stats['rps']['wins'] + u.stats['rps']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('rps')}", inline = False)
     if u.stats["slots"]["wins"] + u.stats["slots"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['slots']['wins'] + u.stats['slots']['losses']}\n\nAchievements: {u.achievement_str('slots')}", inline = False)
     if u.stats["tictactoe"]["wins"] + u.stats["tictactoe"]["losses"] > 0: embed.add_field(name = "Tic Tac Toe",  value = f"Games Played: {u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses']}\n\nGames Won: {u.stats['tictactoe']['wins']} ({math.floor(u.stats['tictactoe']['wins'] / (u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('tictactoe')}", inline = False)
@@ -819,191 +1532,13 @@ async def profileUserCommand(ctx, user: discord.Member):
 #     await ctx.defer(ephemeral = True)
 
 # ========================================================================================================================
-# /help commands
-# ========================================================================================================================
-    
-@help.command(name = "ping")
-async def pingHelpCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Ping Command", description = "Test the bot's response time.\n**Usage:** /ping", color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@help.command(name = "profile")
-async def profileHelpCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Profile Command", description = "View a user's profile. If you do not specify a user, your own will be shown.\n**Usage:** /profile [user]", color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-        
-@help.command(name = "leaderboard")
-async def leaderboardHelpCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Leaderboard Command", description = "See how you stack up against other server members!\n**Usage:** /leaderboard", color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-        
-@help.command(name = "credits")
-async def creditsHelpCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Credits Command", description = "\n**Usage:** /credits", color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-        
-@help.command(name = "shop")
-async def shopHelpCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Shop Command", description = "\n**Usage:** /shop [category]", color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-        
-@help.command(name = "support")
-async def supportHelpCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Support Command", description = "\n**Usage:** /support", color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-        
-@help.command(name = "play")
-async def playHelpCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Play Command", description = "\n**Usage:** /play <game>", color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-# ========================================================================================================================
-# /info subcommands
-# ========================================================================================================================
-# @info.command(name = "gamelist")
-# async def gamelistCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-#     await ctx.defer(ephemeral = not show)
-#     str = ""
-#     for i in info.: str += f"\n- {i.name}"
-
-#     embed = discord.Embed(title = "All Games: (use /info <game> for details)", description = str, color = config.Color.COLORLESS)
-#   .set_footer(text = config.footer)
-
-#     await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "bamboozle")
-async def bamboozleInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "BAMBOOZLE!", description = bamboozle.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "blackjack")
-async def blackjackInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Blackjack", description = blackjack.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "whiteonblack")
-async def whiteonblackInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "White on Black", description = whiteonblack.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "checkers")
-async def checkersInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Checkers", description = checkers.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "chess")
-async def chessInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Chess", description = chess.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "gridlock")
-async def gridlockInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Gridlock", description = gridlock.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "hangman")
-async def hangmanInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Hangman", description = hangman.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "holdem")
-async def holdemInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Holdem", description = holdem.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "monopoly")
-async def monopolyInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "monopoly", description = monopoly.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "rockpaperscissors")
-async def rockpaperscissorsInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Rock Paper Scissors", description = rps.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "slots")
-async def slotsInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Slots", description = slots.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "tictactoe")
-async def tictactoeInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = "Tic Tac Toe", description = tictactoe.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-@info.command(name = "twentyfortyeight")
-async def twentyfortyeightInfoCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
-    await ctx.defer(ephemeral = not show)
-
-    embed = discord.Embed(title = '2048', description = twentyfortyeight.description, color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    await ctx.interaction.followup.send(embed = embed)
-
-# ========================================================================================================================
 # /game commands
 # ========================================================================================================================
 @play.command(name = "bamboozle", description = "Fight to accomplish the goals of your secret role without getting lynched!")
 async def bamboozleGameCommand(ctx):
     await ctx.defer(ephemeral = False)
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer)
+    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
 
     await ctx.interaction.followup.send(embed = embed)
 
@@ -1054,14 +1589,7 @@ async def whiteonblackGameCommand(ctx):
             if interaction.user in players or User(interaction.user.id, Guild(ctx.guild_id)).game(): await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
 
             if len(players) >= 10:
-                e = discord.Embed()
-
-                e.title       = random.choice(config.error_titles)
-                e.description = config.Error.GENERIC.value
-                e.color       = config.Color.ERROR
-                e.set_footer(text = config.footer)
-
-                await interaction.followup.send(embed = e, ephemeral = True)
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
                 return
 
             players.append(interaction.user)
@@ -1073,14 +1601,7 @@ async def whiteonblackGameCommand(ctx):
         async def leaveCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             if interaction.user.id == players[0]:
-                e = discord.Embed()
-
-                e.title       = random.choice(config.error_titles)
-                e.description = config.Error.GENERIC.value
-                e.color       = config.Color.ERROR
-                e.set_footer(text = config.footer)
-
-                await interaction.followup.send(embed = e, ephemeral = True)
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
                 return
             
             if interaction.user.id in players:
@@ -1091,14 +1612,7 @@ async def whiteonblackGameCommand(ctx):
                 await interaction.edit_original_response(embed = embed, view = view)
 
             else:
-                e = discord.Embed()
-
-                e.title       = random.choice(config.error_titles)
-                e.description = config.Error.GENERIC.value
-                e.color       = config.Color.ERROR
-                e.set_footer(text = config.footer)
-
-                await interaction.followup.send(embed = e, ephemeral = True)
+                await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
                 return
 
         async def cancelCallback(interaction):
@@ -1148,7 +1662,7 @@ async def whiteonblackGameCommand(ctx):
 async def checkersGameCommand(ctx):
     await ctx.defer(ephemeral = False)
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer)
+    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
 
     await ctx.interaction.followup.send(embed = embed)
 
@@ -1156,7 +1670,7 @@ async def checkersGameCommand(ctx):
 async def chessGameCommand(ctx):
     await ctx.defer(ephemeral = False)
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer)
+    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
 
     await ctx.interaction.followup.send(embed = embed)
 
@@ -1164,7 +1678,7 @@ async def chessGameCommand(ctx):
 async def gridlockGameCommand(ctx):
     await ctx.defer(ephemeral = False)
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer)
+    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
 
     await ctx.interaction.followup.send(embed = embed)
 
@@ -1183,12 +1697,12 @@ async def hangmanGameCommand(ctx):
 async def holdemGameCommand(ctx):
     await ctx.defer(ephemeral = False)
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer)
+    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
 
     await ctx.interaction.followup.send(embed = embed)
 
-@play.command(name = "monopoly", description = "Race other players to buy up properties without going bankrupt!")
-async def monopolyGameCommand(ctx):
+@play.command(name = "trust", description = "Race other players to buy up properties without going bankrupt!")
+async def trustGameCommand(ctx):
     await ctx.defer(ephemeral = False)
     user = User(ctx.author.id, Guild(ctx.guild.id))
 
@@ -1205,7 +1719,7 @@ async def monopolyGameCommand(ctx):
 
         players = [ctx.author]
         message = None
-        embed = discord.Embed(title = "Play Monopoly!", description = f"{ctx.author.mention} is starting a game. Press `JOIN` to join the game or `LEAVE` to leave it. Use `/info monopoly` to learn the basics of the game. When there are 2-8 players in the game, {ctx.author.mention} can use `START` to start the game. They can also `CANCEL` the game at any time.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.HELLARED).set_footer(text = config.footer)
+        embed = discord.Embed(title = "Play Trust!", description = f"{ctx.author.mention} is starting a game. Press `JOIN` to join the game or `LEAVE` to leave it. Use `/info trust` to learn the basics of the game. When there are 2-8 players in the game, {ctx.author.mention} can use `START` to start the game. They can also `CANCEL` the game at any time.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.HELLARED).set_footer(text = config.footer)
         view = discord.ui.View(joinButton, leaveButton, cancelButton, startButton, timeout = None)
 
         async def joinCallback(interaction):
@@ -1252,7 +1766,7 @@ async def monopolyGameCommand(ctx):
         async def startCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             if interaction.user == players[0]:
-                g = monopoly.Game([monopoly.Player(i.id, i.name) for i in players])
+                g = trust.Game([trust.Player(i.id, i.name) for i in players])
 
                 await message.delete()
                 e, v, f = g.render()
@@ -1273,7 +1787,7 @@ async def monopolyGameCommand(ctx):
 async def rockpaperscissorsGameCommand(ctx):
     await ctx.defer(ephemeral = False)
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer)
+    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
 
     await ctx.interaction.followup.send(embed = embed)
 
@@ -1281,7 +1795,7 @@ async def rockpaperscissorsGameCommand(ctx):
 async def slotsGameCommand(ctx):
     await ctx.defer(ephemeral = False)
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer)
+    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
 
     await ctx.interaction.followup.send(embed = embed)
 
@@ -1289,7 +1803,7 @@ async def slotsGameCommand(ctx):
 async def tictactoeGameCommand(ctx):
     await ctx.defer(ephemeral = False)
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer)
+    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
 
     await ctx.interaction.followup.send(embed = embed)
 
@@ -1306,3 +1820,4 @@ async def twentyfortyeightGameCommand(ctx):
 
 if __name__ == "__main__":
     bot.run(config.token)
+    input()

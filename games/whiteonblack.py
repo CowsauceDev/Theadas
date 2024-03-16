@@ -25,6 +25,8 @@ import random, json, copy, os, pickle
 from enum import Enum
 from typing import List
 
+name = "White on Black"
+
 description = '''
     someone remind me to write this
 '''
@@ -166,10 +168,10 @@ class Game():
                         if i.id == select.values[0]: card = i
 
                     player.play(self, card = card)
-                    c, e, v = self.render()
 
-                    await message.delete()
-                    await self.message.edit(content = c, embeds = e, view = v)
+                    c, e, v = self.render()
+                    await self.message.delete()
+                    self.message = await interaction.followup.send(content = c, embeds = e, view = v)
                                 
                 select.callback = selectCallback
                 v.add_item(select)
@@ -221,9 +223,9 @@ class Game():
 
                     self.save()
 
-                    await message.delete()
                     c, e, v = self.render()
-                    await self.message.edit(content = c, embeds = e, view = v)
+                    await message.delete()
+                    self.message = await interaction.followup.send(content = c, embeds = e, view = v)
                                 
                 select.callback = selectCallback
                 v.add_item(select)
@@ -398,7 +400,8 @@ class Game():
                 endorseSelect.callback = endorseCallback
                 claimButton.callback   = claimCallback
 
-                await self.message.edit(embed = discord.Embed(title = f"{self.players[0].name} wins!", description = "Endorse players or award them medals below.", color = config.Color.COLORLESS), view = v)
+                await self.message.delete()
+                self.message = await interaction.followup.send(embed = discord.Embed(title = f"{self.players[0].name} wins!", description = "Endorse players or award them medals below.", color = config.Color.COLORLESS), view = v)
 
         playButton.callback     = playCallback
         chooseButton.callback   = chooseCallback

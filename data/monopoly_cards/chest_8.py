@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import games.monopoly as monopoly
+import games.trust as trust
 
-class chest_8(monopoly.Card):
+class chest_8(trust.Card):
     def __init__(self):
         super().__init__("Is it Really Fraud?", "You under-reported your income and got a refund! Collect $20.", "assets/card.png")
 

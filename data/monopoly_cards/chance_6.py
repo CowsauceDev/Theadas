@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import games.monopoly as monopoly
+import games.trust as trust
 
-class chance_6(monopoly.Card):
+class chance_6(trust.Card):
     def __init__(self):
         super().__init__("Trip to the Human World!", "Advance to the nearest Portal.", "assets/card.png")
 
