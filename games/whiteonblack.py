@@ -171,6 +171,7 @@ class Game():
 
                     c, e, v = self.render()
                     await self.message.delete()
+                    await message.delete()
                     self.message = await interaction.followup.send(content = c, embeds = e, view = v)
                                 
                 select.callback = selectCallback
@@ -224,6 +225,7 @@ class Game():
                     self.save()
 
                     c, e, v = self.render()
+                    await self.message.delete()
                     await message.delete()
                     self.message = await interaction.followup.send(content = c, embeds = e, view = v)
                                 
@@ -408,12 +410,13 @@ class Game():
         mulliganButton.callback = mulliganCallback
         concedeButton.callback  = concedeCallback
 
-        for p in self.plays.keys():
-            if p != self.czar.id:
-                if len(self.plays[p]) < self.black.blanks:
-                    view.add_item(playButton)
-                    break
-                view.add_item(chooseButton)
+        for i in self.players:
+            if i.id == self.czar.id: pass
+            if len(self.plays[i.id]) < self.black.blanks and i.id != self.czar.id:
+                print(i.id, i.name, len(self.plays[i.id]), self.black.blanks, self.czar.id, self.czar.name)
+                view.add_item(playButton)
+                break
+        else: view.add_item(chooseButton)
 
         view.add_item(mulliganButton)
         view.add_item(concedeButton)

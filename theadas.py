@@ -37,7 +37,7 @@ if __name__ == "__main__":
     import games.gridlock         as gridlock
     import games.hangman          as hangman
     import games.holdem           as holdem
-    import games.trust         as trust
+    import games.trust            as trust
     import games.rps              as rps
     import games.slots            as slots
     import games.tictactoe        as tictactoe
@@ -74,247 +74,227 @@ class Achievement(Enum):
         return obj
 
 class User:
-    def __init__(self, id, guild = None):
+    def __init__(self, id):
         self.id = id
+        user = None
 
-        if os.path.exists(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p"):
-            user: User = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb"))
+        if os.path.exists(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p"): user: User = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb"))
+        else: pickle.dump(None, open(f"{os.path.join(os.path.dirname(__file__), 'data/games')}/{self.id}.p", "wb"))
+        
+        try: self.join: float = user.join
+        except: self.join: float = math.floor(datetime.now().timestamp())
 
-            self.join: float = user.join
-            self.subscribed_since: float = user.subscribed_since
-            self.priority_until:   float = user.priority_until
+        try: self.subscribed_since: float = user.subscribed_since
+        except: self.subscribed_since: float = None
 
-            self.endorses: int = user.endorses
-            self.medals_given: List[str] = user.medals_given
-            self.endorses_given: List[str] = user.endorses_given
-            self.claimed: bool = user.claimed
+        try: self.priority_until: float = user.priority_until
+        except: self.priority_until: float = None
 
-            self.titles:       List[str] = user.titles
-            self.backgrounds:  List[str] = user.backgrounds
-            self.turing:       List[str] = user.turing
-            self.guides:       List[str] = user.guides
-            self.card_holos:   List[gridlock.Game.Card | bamboozle.Game.Role] = user.card_holos
+        try: self.endorses: int = user.endorses
+        except: self.endorses: int = 1
+        
+        try: self.medals_given: List[str] = user.medals_given
+        except: self.medals_given: List[str] = 0
+        
+        try: self.endorses_given: List[str] = user.endorses_given
+        except: self.endorses_given: List[str] = 0
+        
+        try: self.claimed: bool = user.claimed
+        except: self.claimed: bool = False
 
-            self.expansions: List[whiteonblack.Expansion] = user.expansions
-            self.variants: List[trust.Variant] = user.variants
-
-            self.tickets: int = user.tickets
-            self.tokens:  int = user.tokens
-
-            self.chips: int = user.chips
-            self.xp: int = user. xp
-            self.endorsements: int = user.endorsements
-
-            self.dice: int = user.dice
-            self.dominoes: int = user.dominoes
-            self.tiles: int = user.tiles
-            self.chits: int = user.chits
-
-            self.sr: dict = user.sr
-            self.plays: dict = user.plays
-            self.packs: dict = user.packs
-            self.achievements: dict = user.achievements
-            self.stats: dict = user.stats
-        else:
-            self.join: float = math.floor(datetime.now().timestamp())
-            self.subscribed_since: float = None
-            self.priority_until:   float = None
-
-            self.endorses: int = 1
-            self.medals_given: List[str] = 0
-            self.endorses_given: List[str] = 0
-            self.claimed: bool = False
-
-            self.titles:      List[str] = ["Novice"]
-            self.backgrounds: List[str] = ["assets/default_background.png"]
-            self.turing:      List[str] = ["whiteonblack"]
-            self.guides:      List[str] = ["2048", "checkers"]
-            self.card_holos:  List[gridlock.Game.Card | bamboozle.Game.Role]  = []
-
-            self.expansions:  List[whiteonblack.Expansion] = [whiteonblack.Expansion.BASE]
-            self.variants:  List[trust.Expansion] = [trust.Variant.BASE]
-
-            self.tickets: int = 200
-            self.tokens:  int = 0
-
-            self.chips: int = 500
-            self.xp: int = 0
-            self.endorsements: int = 0
-
-            self.dice: int = 0 # consumables, 456 🎟️ or 142 🪙
-            self.dominoes: int = 0 # variants, 325 🪙
-            self.tiles: int = 0 # cosmetics, 245 🎟️ or 76 🪙
-            self.chits: int = 0 # qol, 648 🪙
-
-            '''
-            chips for gambling
-
-            tcg packs
-            one week of matchmaking priority
-            puzzle plays
+        try: self.titles:       List[str] = user.titles
+        except: self.titles:      List[str] = ["Novice"]
+        
+        try: self.backgrounds:  List[str] = user.backgrounds
+        except: self.backgrounds: List[str] = ["assets/default_background.png"]
+        
+        try: self.turing:       List[str] = user.turing
+        except: self.turing:      List[str] = ["whiteonblack"]
+        
+        try: self.guides:       List[str] = user.guides
+        except: self.guides:      List[str] = ["2048", "checkers"]
+        
+        try: self.card_holos:   List[gridlock.Game.Card | bamboozle.Game.Role] = user.card_holos
+        except: self.card_holos:  List[gridlock.Game.Card | bamboozle.Game.Role]  = []
+        
+        try: self.expansions: List[whiteonblack.Expansion] = user.expansions
+        except: self.expansions:  List[whiteonblack.Expansion] = [whiteonblack.Expansion.BASE]
+        
+        try: self.variants: List[trust.Variant] = user.variants
+        except: self.variants:  List[trust.Expansion] = [trust.Variant.BASE]
+        
+        try: self.tickets: int = user.tickets
+        except: self.tickets: int = 200
+        
+        try: self.tokens:  int = user.tokens
+        except: self.tokens:  int = 0
+        
+        try: self.chips: int = user.chips
+        except: self.chips: int = 500
+        
+        try: self.xp: int = user. xp
+        except: self.xp: int = 0
+        
+        try: self.endorsements: int = user.endorsements
+        except: self.endorsements: int = 0
+        
+        try: self.dice: int = user.dice
+        except: self.dice: int = 0 # consumables, 456 🎟️ or 142 🪙
+        
+        try: self.dominoes: int = user.dominoes
+        except: self.dominoes: int = 0 # variants, 325 🪙
+        
+        try: self.tiles: int = user.tiles
+        except: self.tiles: int = 0 # cosmetics, 245 🎟️ or 76 🪙
+        
+        try: self.chits: int = user.chits
+        except: self.chits: int = 0 # qol, 648 🪙
+        
+        try: self.sr: dict = user.sr
+        except: self.sr = {
+            "bamboozle": 100,
+            "checkers": 100,
+            "chess": 100,
+            "gridlock": 100
+        }
             
-            whiteonblack packs
-            trust variants
+        try: self.plays: dict = user.plays
+        except: self.plays = {
+            "2048": 3,
+            "hangman": 3
+        }
+            
+        try: self.packs: dict = user.packs
+        except: self.packs = {
+            gridlock.Pack.SMALL: 0,
+            gridlock.Pack.LARGE: 1,
+            gridlock.Pack.PREMIUM: 0
+        }
+            
+        try: self.achievements: dict = user.achievements
+        except: self.achievements = {
+            "theadas": [],
+            "bamboozle": [],
+            "blackjack": [],
+            "whiteonblack": [],
+            "checkers": [],
+            "chess": [],
+            "gridlock": [],
+            "hangman": [],
+            "holdem": [],
+            "trust": [],
+            "rps": [],
+            "slots": [],
+            "tictactoe": [],
+            "2048": []
+        }
+            
+        try: self.stats: dict = user.stats
+        except: self.stats = {
+            "bamboozle": {
+                "wins": 0,
+                "losses": 0,
 
-            profile backgrounds
-            holo arts for the tcg and bamboozle role cards
-
-            ai in chess, checkers, trust, bamboozle (ai always available in whiteonblack, holdem)
-            strategy guides for all the strategy games
-            endorse 2 people / game
-
-
-
-
-
-            subscription service gives access to all whiteonblack packs and trust variants, matchmaking priority, and n tokens / month
-            '''
-
-            self.sr = {
-                "bamboozle": 100,
-                "checkers": 100,
-                "chess": 100,
-                "gridlock": 100
-            }
-
-            self.plays = {
-                "2048": 3,
-                "hangman": 3
-            }
-
-            self.packs = {
-                gridlock.Pack.SMALL: 0,
-                gridlock.Pack.LARGE: 1,
-                gridlock.Pack.PREMIUM: 0
-            }
-
-            self.achievements = {
-                "theadas": [],
-                "bamboozle": [],
-                "blackjack": [],
-                "whiteonblack": [],
-                "checkers": [],
-                "chess": [],
-                "gridlock": [],
-                "hangman": [],
-                "holdem": [],
-                "trust": [],
-                "rps": [],
-                "slots": [],
-                "tictactoe": [],
-                "2048": []
-            }
-
-            self.stats = {
-                "bamboozle": {
-                    "wins": 0,
-                    "losses": 0,
-
-                    "medals": {
-                        "manipulator": 0,
-                        "poker face": 0,
-                        "backstabber": 0
-                    }
-                },
-
-                "blackjack": {
-                    "wins": 0,
-                    "losses": 0,
-                },
-
-                "whiteonblack": {
-                    "games": 0,
-
-                    "medals": {
-                        "lucky": 0,
-                        "funny": 0,
-                        "nasty": 0,
-                        "offensive": 0
-                    }
-                },
-
-                "checkers": {
-                    "wins": 0,
-                    "losses": 0,
-
-                    "medals": {
-                        "played well": 0
-                    }
-                },
-
-                "chess": {
-                    "wins": 0,
-                    "losses": 0,
-
-                    "medals": {
-                        "knowledgable": 0,
-                        "risk taker": 0,
-                        "played fast": 0
-                    }
-                },
-
-                "gridlock": {
-                    "wins": 0,
-                    "losses": 0,
-
-                    "medals": {
-                        "interesting deck": 0,
-                        "played well": 0,
-                        "played fast": 0,
-                    }
-                },
-
-                "hangman": {
-                    "wins": 0,
-                    "losses": 0
-                },
-
-                "holdem": {
-                    "wins": 0,
-                    "losses": 0,
-
-                    "medals": {
-                        "high roller": 0,
-                        "bluff master": 0
-                    }
-                },
-
-                "trust": {
-                    "wins": 0,
-                    "losses": 0,
-
-                    "medals": {
-                        "lucky": 0,
-                        "smart investor": 0,
-                        "negotiator": 0
-                    }
-                },
-
-                "rps": {
-                    "wins": 0,
-                    "losses": 0,
-                },
-
-                "slots": {
-                    "wins": 0,
-                    "losses": 0,
-                },
-                "tictactoe": {
-                    "wins": 0,
-                    "losses": 0,
-                },
-                "2048": {
-                    "games": 0,
-                    "high_score": 0
+                "medals": {
+                    "manipulator": 0,
+                    "poker face": 0,
+                    "backstabber": 0
                 }
+            },
+
+            "blackjack": {
+                "wins": 0,
+                "losses": 0,
+            },
+
+            "whiteonblack": {
+                "games": 0,
+
+                "medals": {
+                    "lucky": 0,
+                    "funny": 0,
+                    "nasty": 0,
+                    "offensive": 0
+                }
+            },
+
+            "checkers": {
+                "wins": 0,
+                "losses": 0,
+
+                "medals": {
+                    "played well": 0
+                }
+            },
+
+            "chess": {
+                "wins": 0,
+                "losses": 0,
+
+                "medals": {
+                    "knowledgable": 0,
+                    "risk taker": 0,
+                    "played fast": 0
+                }
+            },
+
+            "gridlock": {
+                "wins": 0,
+                "losses": 0,
+
+                "medals": {
+                    "interesting deck": 0,
+                    "played well": 0,
+                    "played fast": 0,
+                }
+            },
+
+            "hangman": {
+                "wins": 0,
+                "losses": 0
+            },
+
+            "holdem": {
+                "wins": 0,
+                "losses": 0,
+
+                "medals": {
+                    "high roller": 0,
+                    "bluff master": 0
+                }
+            },
+
+            "trust": {
+                "wins": 0,
+                "losses": 0,
+
+                "medals": {
+                    "lucky": 0,
+                    "smart investor": 0,
+                    "negotiator": 0
+                }
+            },
+
+            "rps": {
+                "wins": 0,
+                "losses": 0,
+            },
+
+            "slots": {
+                "wins": 0,
+                "losses": 0,
+            },
+            "tictactoe": {
+                "wins": 0,
+                "losses": 0,
+            },
+            "2048": {
+                "games": 0,
+                "high_score": 0
             }
+        }
 
-            pickle.dump(None, open(f"{os.path.join(os.path.dirname(__file__), 'data/games')}/{self.id}.p", "wb"))
-            self.save()
-
-            if guild:
-                guild.users.append(self.id)
-                guild.save()
+        self.save()
     
     def save(self): pickle.dump(self, open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{self.id}.p", "wb"))
     def get_level(self): return int(0.08 * math.sqrt(self.xp))
@@ -379,28 +359,29 @@ class User:
 class Guild:
     def __init__(self, id):
         self.id = id
+        guild = None
+
         if os.path.exists(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{id}.p"):
             guild: Guild = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{id}.p", "rb"))
-            self.users = guild.users
-            self.sharing: bool = guild.sharing
-        else:
-            self.users = []
-            self.sharing: bool = False
 
-            self.save()
+        try: self.sharing: bool = guild.sharing
+        except: self.sharing: bool = False
+
+        self.save()
 
     def save(self): pickle.dump(self, open(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{self.id}.p", "wb"))
 
-bot = discord.Bot(activity = discord.Game("Play games with friends!"), intents = discord.Intents(members = True))
+bot = discord.Bot(activity = discord.Game("Play games with friends!"), intents = discord.Intents(members = True, guilds = True))
 
 @tasks.loop(hours = 24)
 async def reset_plays():
     for i in os.listdir("data/users"):
-        user = User(i.split(".")[0])
+        if i.endswith(".p"):
+            user = User(i.split(".")[0])
 
-        user.plays["2048"] += (3 if user.plays["2048"] <= 0 else 0)
-        user.plays["hangman"] += (3 if user.plays["hangman"] <= 0 else 0)
-        user.chips += (100 if user.chips <= 0 else 0)
+            user.plays["2048"] += (3 if user.plays["2048"] <= 0 else 0)
+            user.plays["hangman"] += (3 if user.plays["hangman"] <= 0 else 0)
+            user.chips += (100 if user.chips <= 0 else 0)
 
 @bot.event
 async def on_ready():
@@ -426,7 +407,7 @@ async def pingCommand(ctx, show: discord.Option(bool, "Select false to keep the 
 
     await ctx.interaction.followup.send(embed = embed)
 
-@bot.slash_command(name = "summon", description = "Spend dice for a chance to win cool items!", guild_ids = [537839766381658134])
+@bot.slash_command(name = "summon", description = "Spend dice for a chance to win cool items!")
 async def summonCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
     message: discord.Message = None
@@ -1021,7 +1002,7 @@ async def hackCommand(ctx, u: discord.Option(discord.User, "User to hack."), fie
 async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank to check your own.") = None, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
     if user is None: user = ctx.author
-    u: User = User(user.id, Guild(ctx.guild.id))
+    u: User = User(user.id)
 
     moreSelect = discord.ui.Select(placeholder = "See More...", options = [
         discord.SelectOption(label = "Titles", value = "titles"),
@@ -1405,14 +1386,14 @@ async def leaderboardCommand(ctx, show: discord.Option(bool, "Select false to ke
     board = ""
     n = 1
 
-    for i in Guild(ctx.guild.id).users[0:20]: 
-        user = User(i)
-        name = await bot.fetch_user(i)
+    ids = [u.id async for u in ctx.guild.fetch_members() if not u.bot]
+    for i in sorted([User(i) for i in ids], key = lambda x: x.xp, reverse = True): 
+        name = await bot.fetch_user(i.id)
         name = name.name
         xp = ""
-        # TODO: actually order the leaderboard
-        for i in range(10): xp += "▰" if i < round((user.xp / user.get_next_level()) * 10) else "▱"
-        board += f"\n[{n}] ‣ **{name} (Level {user.get_level()}):** {user.xp} xp `{xp}`"
+        
+        for x in range(10): xp += "▰" if x < round((i.xp / i.get_next_level()) * 10) else "▱"
+        board += f"\n[{n}] ‣ **{name} (Level {i.get_level()}):** {i.xp} xp `{xp}`"
         n += 1
     
     await ctx.interaction.followup.send(embed = discord.Embed(title = f"{ctx.guild.name} Leaderboard", description = board, color = config.Color.COLORLESS).set_footer(text = f"Version: {config.version}"))
@@ -1437,7 +1418,7 @@ async def supportCommand(ctx, show: discord.Option(bool, "Select false to keep t
 async def profileUserCommand(ctx, user: discord.Member):
     await ctx.defer(ephemeral = True)
     if user is None: user = ctx.author
-    u: User = User(user.id, Guild(ctx.guild.id))
+    u: User = User(user.id)
 
     moreSelect = discord.ui.Select(placeholder = "See More...", options = [
         discord.SelectOption(label = "Titles", value = "titles"),
@@ -1535,7 +1516,7 @@ async def profileUserCommand(ctx, user: discord.Member):
 # /game commands
 # ========================================================================================================================
 @play.command(name = "bamboozle", description = "Fight to accomplish the goals of your secret role without getting lynched!")
-async def bamboozleGameCommand(ctx):
+async def bamboozlePlayCommand(ctx):
     await ctx.defer(ephemeral = False)
 
     embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
@@ -1543,7 +1524,7 @@ async def bamboozleGameCommand(ctx):
     await ctx.interaction.followup.send(embed = embed)
 
 @play.command(name = "blackjack", description = "Draw cards from the deck, trying to be closest to 21 without going over.")
-async def blackjackGameCommand(ctx, bet: discord.Option(int, "Bet an amount between 2 and 500 chips.")):
+async def blackjackPlayCommand(ctx, bet: discord.Option(int, "Bet an amount between 2 and 500 chips.")):
     await ctx.defer(ephemeral = True)
     user = User(ctx.author.id)
 
@@ -1556,11 +1537,11 @@ async def blackjackGameCommand(ctx, bet: discord.Option(int, "Bet an amount betw
     
 @play.command(name = "whiteonblack", description = "Find the funniest response to the Czar\'s prompts!")
 # @discord.is_nsfw()
-async def whiteonblackGameCommand(ctx):
+async def whiteonblackPlayCommand(ctx):
     await ctx.defer()
 
     embed = discord.Embed()
-    user = User(ctx.author.id, Guild(ctx.guild_id))
+    user = User(ctx.author.id)
 
     if user.game() is not None: 
         g = user.game()
@@ -1581,17 +1562,17 @@ async def whiteonblackGameCommand(ctx):
 
         joinButton   = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "JOIN")
         leaveButton  = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "LEAVE")
-        cancelButton = discord.ui.Button(style = discord.ButtonStyle.danger,    label = "CANCEL")
         startButton  = discord.ui.Button(style = discord.ButtonStyle.success,   label = "START", disabled = True)
 
         async def joinCallback(interaction):
             await interaction.response.defer(ephemeral = True)
-            if interaction.user in players or User(interaction.user.id, Guild(ctx.guild_id)).game(): await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+            if interaction.user in players or User(interaction.user.id).game(): await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
 
             if len(players) >= 10:
                 await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
                 return
 
+            User(interaction.user.id)
             players.append(interaction.user)
             embed.description += f"\n- {interaction.user.mention}"
             startButton.disabled = True if 3 <= len(players) >= 10 else False
@@ -1615,18 +1596,6 @@ async def whiteonblackGameCommand(ctx):
                 await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
                 return
 
-        async def cancelCallback(interaction):
-            await interaction.response.defer(ephemeral = True)
-            if interaction.user is not ctx.author:
-                embed.title       = random.choice(config.error_titles)
-                embed.description = config.Error.PERMISSION.value
-                embed.color       = config.Color.ERROR
-                embed.set_footer(text = config.footer)
-
-                await ctx.interaction.followup.send(embed = embed, ephemeral = True)
-
-            else: await message.delete()
-
         async def startCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             if interaction.user == players[0]:
@@ -1648,18 +1617,16 @@ async def whiteonblackGameCommand(ctx):
 
         joinButton.callback   = joinCallback
         leaveButton.callback  = leaveCallback
-        cancelButton.callback = cancelCallback
         startButton.callback  = startCallback
 
         view.add_item(joinButton)
         view.add_item(leaveButton)
-        view.add_item(cancelButton)
         view.add_item(startButton)
 
         message = await ctx.interaction.followup.send(embed = embed, view = view)
 
 @play.command(name = "checkers", description = "Capture all your opponent's pieces to claim victory!")
-async def checkersGameCommand(ctx):
+async def checkersPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
 
     embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
@@ -1667,7 +1634,7 @@ async def checkersGameCommand(ctx):
     await ctx.interaction.followup.send(embed = embed)
 
 @play.command(name = "chess", description = "Battle it out in this classic game of strategy")
-async def chessGameCommand(ctx):
+async def chessPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
 
     embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
@@ -1675,7 +1642,7 @@ async def chessGameCommand(ctx):
     await ctx.interaction.followup.send(embed = embed)
 
 @play.command(name = "gridlock", description = "Collect cards and play them on a 5x5 grid to outsmart your opponents!")
-async def gridlockGameCommand(ctx):
+async def gridlockPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
 
     embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
@@ -1683,7 +1650,7 @@ async def gridlockGameCommand(ctx):
     await ctx.interaction.followup.send(embed = embed)
 
 @play.command(name = "hangman", description = "Try and guess a word before you get hanged!")
-async def hangmanGameCommand(ctx):
+async def hangmanPlayCommand(ctx):
     await ctx.defer(ephemeral = True)
     user = User(ctx.author.id)
 
@@ -1694,7 +1661,7 @@ async def hangmanGameCommand(ctx):
         g.message = await ctx.interaction.followup.send(embed = e, view = v)
 
 @play.command(name = "holdem", description = "Get lucky and bluff your friends to win big!")
-async def holdemGameCommand(ctx):
+async def holdemPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
 
     embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
@@ -1702,9 +1669,9 @@ async def holdemGameCommand(ctx):
     await ctx.interaction.followup.send(embed = embed)
 
 @play.command(name = "trust", description = "Race other players to buy up properties without going bankrupt!")
-async def trustGameCommand(ctx):
+async def trustPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
-    user = User(ctx.author.id, Guild(ctx.guild.id))
+    user = User(ctx.author.id)
 
     if user.game() != None:
         g = user.game()
@@ -1714,13 +1681,12 @@ async def trustGameCommand(ctx):
     else:
         joinButton   = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "JOIN")
         leaveButton  = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "LEAVE")
-        cancelButton = discord.ui.Button(style = discord.ButtonStyle.danger,    label = "CANCEL")
         startButton  = discord.ui.Button(style = discord.ButtonStyle.success,   label = "START", disabled = True)
 
         players = [ctx.author]
         message = None
         embed = discord.Embed(title = "Play Trust!", description = f"{ctx.author.mention} is starting a game. Press `JOIN` to join the game or `LEAVE` to leave it. Use `/info trust` to learn the basics of the game. When there are 2-8 players in the game, {ctx.author.mention} can use `START` to start the game. They can also `CANCEL` the game at any time.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.HELLARED).set_footer(text = config.footer)
-        view = discord.ui.View(joinButton, leaveButton, cancelButton, startButton, timeout = None)
+        view = discord.ui.View(joinButton, leaveButton, startButton, timeout = None)
 
         async def joinCallback(interaction):
             await interaction.response.defer(ephemeral = True)
@@ -1755,14 +1721,6 @@ async def trustGameCommand(ctx):
                 await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
                 return
 
-        async def cancelCallback(interaction):
-            await interaction.response.defer(ephemeral = True)
-            if interaction.user is not ctx.author:
-                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
-                return
-
-            else: await message.delete()
-
         async def startCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             if interaction.user == players[0]:
@@ -1778,13 +1736,12 @@ async def trustGameCommand(ctx):
 
         joinButton.callback   = joinCallback
         leaveButton.callback  = leaveCallback
-        cancelButton.callback = cancelCallback
         startButton.callback  = startCallback
 
         message = await ctx.interaction.followup.send(embed = embed, view = view)
 
 @play.command(name = "rockpaperscissors", description = "Rock beats scissors, paper beats rock, and scissors beat paper.")
-async def rockpaperscissorsGameCommand(ctx):
+async def rockpaperscissorsPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
 
     embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
@@ -1792,7 +1749,7 @@ async def rockpaperscissorsGameCommand(ctx):
     await ctx.interaction.followup.send(embed = embed)
 
 @play.command(name = "slots", description = "Get 3 in a row to win big!")
-async def slotsGameCommand(ctx):
+async def slotsPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
 
     embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
@@ -1800,7 +1757,7 @@ async def slotsGameCommand(ctx):
     await ctx.interaction.followup.send(embed = embed)
 
 @play.command(name = "tictactoe", description = "Get 3 in a row before your opponent can.")
-async def tictactoeGameCommand(ctx):
+async def tictactoePlayCommand(ctx):
     await ctx.defer(ephemeral = False)
 
     embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
@@ -1808,7 +1765,7 @@ async def tictactoeGameCommand(ctx):
     await ctx.interaction.followup.send(embed = embed)
 
 @play.command(name = "twentyfortyeight", description = "Merge tiles until you run out of space.")
-async def twentyfortyeightGameCommand(ctx):
+async def twentyfortyeightPlayCommand(ctx):
     await ctx.defer(ephemeral = True)
     user = User(ctx.author.id)
 
