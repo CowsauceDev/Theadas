@@ -1386,7 +1386,7 @@ async def helpCommand(ctx, category: discord.Option(str, "pick a command or game
 async def leaderboardCommand(ctx, page: discord.Option(int, "20 users on each page") = 1, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
     board = ""
-    n = 1
+    n = page
 
     ids = [u.id async for u in ctx.guild.fetch_members() if not u.bot]
     for i in sorted([User(i) for i in ids], key = lambda x: x.xp, reverse = True)[0 + (20 * (page - 1)) : 20 * page]: 
