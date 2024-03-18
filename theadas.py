@@ -1388,8 +1388,8 @@ async def leaderboardCommand(ctx, page: discord.Option(int, "20 users on each pa
     board = ""
     n = 1
 
-    ids = [u.id async for u in ctx.guild.fetch_members() if not u.bot][0 + (20 * (page - 1)) : 20 * page]
-    for i in sorted([User(i) for i in ids], key = lambda x: x.xp, reverse = True): 
+    ids = [u.id async for u in ctx.guild.fetch_members() if not u.bot]
+    for i in sorted([User(i) for i in ids], key = lambda x: x.xp, reverse = True)[0 + (20 * (page - 1)) : 20 * page]: 
         name = await bot.fetch_user(i.id)
         name = name.name
         xp = ""
