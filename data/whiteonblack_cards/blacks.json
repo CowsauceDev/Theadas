@@ -46,7 +46,7 @@
     
     {
         "name": "\\_\\_\\_\\_\\_\\_ in the hand is worth \\_\\_\\_\\_\\_\\_ in the pot.",
-        "blanks": 1
+        "blanks": 2
     },
     
     {
@@ -65,7 +65,7 @@
     },
     
     {
-        "name": "I bet you didn't expect that \\_\\_\\_\\_\\_\\_ to be poisoned!",
+        "name": "I bet you didn't expect \\_\\_\\_\\_\\_\\_ to be poisoned!",
         "blanks": 1
     },
     
@@ -160,7 +160,7 @@
     },
 
     {
-        "name": "I kissed a \\_\\_\\_\\_\\_\\_ and I liked it.",
+        "name": "I kissed \\_\\_\\_\\_\\_\\_ and I liked it.",
         "blanks": 1
     },
     

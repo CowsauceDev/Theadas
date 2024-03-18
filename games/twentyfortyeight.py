@@ -90,7 +90,7 @@ class Game():
 
         self.spawn(2)
     
-    def spawn(self, n):
+    def spawn(self, n: int):
         spawns = 0
 
         while spawns < n:
@@ -218,7 +218,7 @@ class Game():
             await self.message.edit(embed = e, view = discord.ui.View(), file = f)
             return
 
-        self.spawn(5)
+        self.spawn(1)
         for i in [self.board[x][y] for x in range(4) for y in range(4)]: i.merged = False
 
     def render(self):
@@ -265,32 +265,28 @@ class Game():
             await self.move((0, -1))
 
             e, v, f = self.render()
-            await self.message.delete()
-            self.message = await interaction.followup.send(embed = e, view = v, file = f)
+            await self.message.edit(embed = e, view = v, file = f)
 
         async def leftCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             await self.move((-1, 0))
 
             e, v, f = self.render()
-            await self.message.delete()
-            self.message = await interaction.followup.send(embed = e, view = v, file = f)
+            await self.message.edit(embed = e, view = v, file = f)
 
         async def rightCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             await self.move((1, 0))
 
             e, v, f = self.render()
-            await self.message.delete()
-            self.message = await interaction.followup.send(embed = e, view = v, file = f)
+            await self.message.edit(embed = e, view = v, file = f)
 
         async def downCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             await self.move((0, 1))
 
             e, v, f = self.render()
-            await self.message.delete()
-            self.message = await interaction.followup.send(embed = e, view = v, file = f)
+            await self.message.edit(embed = e, view = v, file = f)
 
         upButton.callback, leftButton.callback, rightButton.callback, downButton.callback = upCallback, leftCallback, rightCallback, downCallback
         return discord.Embed(color = config.Color.COLORLESS).set_image(url = "attachment://board.png").set_footer(text = config.footer), view, discord.File(fp = bytes, filename = "board.png")

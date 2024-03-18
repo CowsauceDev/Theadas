@@ -566,7 +566,7 @@ async def summonCommand(ctx, show: discord.Option(bool, "Select false to keep th
     message = await ctx.interaction.followup.send(embed = discord.Embed(title = f"{ctx.author.name} is Summoning!", description = "Start your summon by choosing a domain. Domains determine what you can summon if you hit a panda (5% chance). Domains rotate occasionally, so make sure to check back frequently!\n## Domains\n**All domains:** tickets, tokens, xp (guaranteed), chips, dominoes, tiles, chits\n**LOGOS (1 dice):** 10 Hangman plays, 10 2048 plays\n**ETHOS (2 dice)** \"Early Supporter\" title, \"Summon Master\" title\n**PATHOS (3 dice):** award an extra medal each game"), view = discord.ui.View(domainSelect))
 
 @bot.slash_command(name = "hack", description = "Change a user's profile.", guild_ids = [1101982625003995270])
-async def hackCommand(ctx, u: discord.Option(discord.User, "User to hack."), field: discord.Option(str, "Which field should be hacked?", choices = ["Tickets", "Tokens", "Chips", "Dice", "Dominoes", "Tiles", "Chits", "Experience", "Turing", "Achievements", "Priority", "Backgrounds", "BAMBOOZLE!", "Checkers", "Chess", "Gridlock", "2048", "Hangman"])):
+async def hackCommand(ctx, u: discord.Option(discord.User, "User to hack."), field: discord.Option(str, "Which field should be hacked?", choices = ["Tickets", "Tokens", "Chips", "Dice", "Dominoes", "Tiles", "Chits", "Experience", "Turing", "Achievements", "Priority", "Backgrounds", "BAMBOOZLE!", "Checkers", "Chess", "Gridlock", "2048", "Hangman", "Game Purge"])):
     await ctx.defer(ephemeral = True)
     user: User = User(u.id)
 
@@ -992,6 +992,8 @@ async def hackCommand(ctx, u: discord.Option(discord.User, "User to hack."), fie
                 plusOne.callback, plusTen.callback, plusFifty.callback, plusHundred.callback, minusOne.callback, minusTen.callback, minusFifty.callback, minusHundred.callback = plusOneCallback, plusTenCallback, plusFiftyCallback, plusHundredCallback, minusOneCallback, minusTenCallback, minusFiftyCallback, minusHundredCallback
                 await ctx.interaction.followup.send(embed = discord.Embed(title = f"You are hacking {u.name}'s Hangman Plays.", color = config.Color.ERROR).set_footer(text = config.footer), view = discord.ui.View(plusOne, plusTen, plusFifty, plusHundred, minusOne, minusTen, minusFifty, minusHundred), ephemeral = True)
 
+            case "Game Purge": pickle.dump(None, open(f"{os.path.join(os.path.dirname(__file__), 'data/games')}/{user.id}.p", "wb"))
+
             case _: 
                 await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
                 return
@@ -1381,12 +1383,12 @@ async def helpCommand(ctx, category: discord.Option(str, "pick a command or game
             await ctx.interaction.followup.send(embeds = default)
 
 @bot.slash_command(name = "leaderboard", description = "See how you stack up against other server members!")
-async def leaderboardCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
+async def leaderboardCommand(ctx, page: discord.Option(int, "20 users on each page") = 1, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
     board = ""
     n = 1
 
-    ids = [u.id async for u in ctx.guild.fetch_members() if not u.bot]
+    ids = [u.id async for u in ctx.guild.fetch_members() if not u.bot][0 + (20 * (page - 1)) : 20 * page]
     for i in sorted([User(i) for i in ids], key = lambda x: x.xp, reverse = True): 
         name = await bot.fetch_user(i.id)
         name = name.name
@@ -1566,7 +1568,9 @@ async def whiteonblackPlayCommand(ctx):
 
         async def joinCallback(interaction):
             await interaction.response.defer(ephemeral = True)
-            if interaction.user in players or User(interaction.user.id).game(): await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+            if interaction.user in players or User(interaction.user.id).game(): 
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
 
             if len(players) >= 10:
                 await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
@@ -1699,6 +1703,7 @@ async def trustPlayCommand(ctx):
                 return
 
             players.append(interaction.user)
+            User(interaction.user.id)
             embed.description += f"\n- {interaction.user.mention}"
             startButton.disabled = True if 2 <= len(players) >= 8 else False
 
