@@ -33,7 +33,7 @@ description = '''
 '''
 
 class Variant(Enum):
-    BASE = "Base Set"
+    BASE = "Trust (default)"
 
 class Card():
     def __init__(self, name, description, image):

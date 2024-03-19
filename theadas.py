@@ -22,7 +22,7 @@ import discord
 from discord.ext import tasks
 from discord.ext.pages import Page, Paginator, PaginatorButton
 
-import math, random, os, pickle
+import math, random, os, pickle, asyncio
 from enum     import Enum
 from datetime import datetime
 from typing   import List
@@ -76,81 +76,81 @@ class Achievement(Enum):
 class User:
     def __init__(self, id):
         self.id = id
-        user = None
-
-        if os.path.exists(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p"): user: User = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb"))
-        else: pickle.dump(None, open(f"{os.path.join(os.path.dirname(__file__), 'data/games')}/{self.id}.p", "wb"))
+        if not os.path.exists(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p"): pickle.dump(None, open(f"{os.path.join(os.path.dirname(__file__), 'data/games')}/{self.id}.p", "wb"))
         
-        try: self.join: float = user.join
+        try: self.join: float = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).join
         except: self.join: float = math.floor(datetime.now().timestamp())
 
-        try: self.subscribed_since: float = user.subscribed_since
+        try: self.subscribed_since: float = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).subscribed_since
         except: self.subscribed_since: float = None
 
-        try: self.priority_until: float = user.priority_until
+        try: self.joined: bool = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).joined
+        except: self.joined: bool = False
+
+        try: self.priority_until: float = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).priority_until
         except: self.priority_until: float = None
 
-        try: self.endorses: int = user.endorses
+        try: self.endorses: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).endorses
         except: self.endorses: int = 1
         
-        try: self.medals_given: List[str] = user.medals_given
+        try: self.medals_given: List[str] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).medals_given
         except: self.medals_given: List[str] = 0
         
-        try: self.endorses_given: List[str] = user.endorses_given
+        try: self.endorses_given: List[str] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).endorses_given
         except: self.endorses_given: List[str] = 0
         
-        try: self.claimed: bool = user.claimed
+        try: self.claimed: bool = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).claimed
         except: self.claimed: bool = False
 
-        try: self.titles:       List[str] = user.titles
-        except: self.titles:      List[str] = ["Novice"]
+        try: self.titles: List[str] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).titles
+        except: self.titles: List[str] = ["Novice"]
         
-        try: self.backgrounds:  List[str] = user.backgrounds
+        try: self.backgrounds: List[str] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).backgrounds
         except: self.backgrounds: List[str] = ["assets/default_background.png"]
         
-        try: self.turing:       List[str] = user.turing
-        except: self.turing:      List[str] = ["whiteonblack"]
+        try: self.turing: List[str] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).turing
+        except: self.turing: List[str] = ["whiteonblack"]
         
-        try: self.guides:       List[str] = user.guides
-        except: self.guides:      List[str] = ["2048", "checkers"]
+        try: self.guides: List[str] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).guides
+        except: self.guides: List[str] = ["2048", "checkers"]
         
-        try: self.card_holos:   List[gridlock.Game.Card | bamboozle.Game.Role] = user.card_holos
-        except: self.card_holos:  List[gridlock.Game.Card | bamboozle.Game.Role]  = []
+        try: self.card_holos: List[gridlock.Game.Card | bamboozle.Game.Role] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).card_holos
+        except: self.card_holos: List[gridlock.Game.Card | bamboozle.Game.Role]  = []
         
-        try: self.expansions: List[whiteonblack.Expansion] = user.expansions
-        except: self.expansions:  List[whiteonblack.Expansion] = [whiteonblack.Expansion.BASE]
+        try: self.expansions: List[whiteonblack.Expansion] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).expansions
+        except: self.expansions: List[whiteonblack.Expansion] = [whiteonblack.Expansion.BASE]
         
-        try: self.variants: List[trust.Variant] = user.variants
-        except: self.variants:  List[trust.Expansion] = [trust.Variant.BASE]
+        try: self.variants: List[trust.Variant] = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).variants
+        except: self.variants: List[trust.Expansion] = [trust.Variant.BASE]
         
-        try: self.tickets: int = user.tickets
+        try: self.tickets: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).tickets
         except: self.tickets: int = 200
         
-        try: self.tokens:  int = user.tokens
-        except: self.tokens:  int = 0
+        try: self.tokens: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).tokens
+        except: self.tokens: int = 0
         
-        try: self.chips: int = user.chips
+        try: self.chips: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).chips
         except: self.chips: int = 500
         
-        try: self.xp: int = user. xp
+        try: self.xp: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")). xp
         except: self.xp: int = 0
         
-        try: self.endorsements: int = user.endorsements
+        try: self.endorsements: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).endorsements
         except: self.endorsements: int = 0
         
-        try: self.dice: int = user.dice
+        try: self.dice: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).dice
         except: self.dice: int = 0 # consumables, 456 🎟️ or 142 🪙
         
-        try: self.dominoes: int = user.dominoes
+        try: self.dominoes: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).dominoes
         except: self.dominoes: int = 0 # variants, 325 🪙
         
-        try: self.tiles: int = user.tiles
+        try: self.tiles: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).tiles
         except: self.tiles: int = 0 # cosmetics, 245 🎟️ or 76 🪙
         
-        try: self.chits: int = user.chits
+        try: self.chits: int = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).chits
         except: self.chits: int = 0 # qol, 648 🪙
         
-        try: self.sr: dict = user.sr
+        try: self.sr: dict = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).sr
         except: self.sr = {
             "bamboozle": 100,
             "checkers": 100,
@@ -158,20 +158,20 @@ class User:
             "gridlock": 100
         }
             
-        try: self.plays: dict = user.plays
+        try: self.plays: dict = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).plays
         except: self.plays = {
             "2048": 3,
             "hangman": 3
         }
             
-        try: self.packs: dict = user.packs
+        try: self.packs: dict = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).packs
         except: self.packs = {
             gridlock.Pack.SMALL: 0,
             gridlock.Pack.LARGE: 1,
             gridlock.Pack.PREMIUM: 0
         }
             
-        try: self.achievements: dict = user.achievements
+        try: self.achievements: dict = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).achievements
         except: self.achievements = {
             "theadas": [],
             "bamboozle": [],
@@ -189,7 +189,7 @@ class User:
             "2048": []
         }
             
-        try: self.stats: dict = user.stats
+        try: self.stats: dict = pickle.load(open(f"{os.path.join(os.path.dirname(__file__), 'data/users')}/{id}.p", "rb")).stats
         except: self.stats = {
             "bamboozle": {
                 "wins": 0,
@@ -370,8 +370,13 @@ class Guild:
         self.save()
 
     def save(self): pickle.dump(self, open(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{self.id}.p", "wb"))
-
-bot = discord.Bot(activity = discord.Game("Play games with friends!"), intents = discord.Intents(members = True, guilds = True))
+intents = discord.Intents()
+intents.members = True
+intents.guilds = True
+intents.message_content = True
+intents.guild_messages = True
+intents.guild_reactions = True
+bot = discord.Bot(activity = discord.Game("Play games with friends!"), intents = intents)
 
 @tasks.loop(hours = 24)
 async def reset_plays():
@@ -389,17 +394,42 @@ async def on_ready():
     reset_plays.start()
 
 @bot.event
-async def on_guild_join(member: discord.Member):
-    if member.guild.id != "1101982625003995270": return
-    else: User(member.id).award()
+async def on_member_join(member: discord.Member):
+    if member.guild.id != "1101982625003995270" or member.bot: return
+    else:
+        user = User(member.id)
+        if user.joined: bot.fetch_channel(1101989112619204689).send(f"Look! The portal is glowing! It's {member.mention}!")
+        else:
+            xp, tickets, jackpot = user.award()
+            bot.fetch_channel(1101989112619204689).send(embed = discord.Embed(title = f"Look! The portal is glowing! It's {member.mention}!", description = f"For joining the support server, they received **{xp}** experience and **{tickets}** tickets." + (f"\n**JACKPOT!**\nThey also got {jackpot}!" if jackpot else ""), color = 0x229acc).set_footer(text = config.footer))
+            
+            user.joined = True
+            user.save()
 
-# info = bot.create_group("info", "See information about this game!")
+@bot.event
+async def on_member_leave(member: discord.Member):
+    if member.guild.id != "1101982625003995270" or member.bot: return
+    else: bot.fetch_channel(1101989112619204689).send(f"{member.name} vanished...")
+
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot: return
+    else: 
+        user = User(message.author.id)
+        level = user.get_level()
+
+        user.xp += 1
+        user.save()
+
+        if user.get_level() > level: await message.channel.send(embed = discord.Embed(title = f"{message.author.name} is now Level {user.get_level()}!", color = config.Color.COLORLESS).set_footer(text = config.footer))
+
 play = bot.create_group("play", "Play a game!")
-# help = bot.create_group("help", "Learn how to use any command.")
 
 @bot.slash_command(name = "ping", description = "Test the bot's latency.")
 async def pingCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
+    if ctx.author.bot: return
+
     embed = discord.Embed(title = "Pong!", description = f"The bot's latency is currently {round(bot.latency, 2)}ms.").set_footer(text = config.footer)
 
     if bot.latency > 30: embed.color = discord.Color.red()
@@ -410,8 +440,9 @@ async def pingCommand(ctx, show: discord.Option(bool, "Select false to keep the 
 @bot.slash_command(name = "summon", description = "Spend dice for a chance to win cool items!")
 async def summonCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
-    message: discord.Message = None
+    if ctx.author.bot: return
 
+    message: discord.Message = None
     domainSelect = discord.ui.Select(placeholder = "PICK A DOMAIN TO SUMMON FROM", options = [
         discord.SelectOption(label = "Logos", value = "logos"),
         discord.SelectOption(label = "Ethos", value = "ethos"),
@@ -568,8 +599,9 @@ async def summonCommand(ctx, show: discord.Option(bool, "Select false to keep th
 @bot.slash_command(name = "hack", description = "Change a user's profile.", guild_ids = [1101982625003995270])
 async def hackCommand(ctx, u: discord.Option(discord.User, "User to hack."), field: discord.Option(str, "Which field should be hacked?", choices = ["Tickets", "Tokens", "Chips", "Dice", "Dominoes", "Tiles", "Chits", "Experience", "Turing", "Achievements", "Priority", "Backgrounds", "BAMBOOZLE!", "Checkers", "Chess", "Gridlock", "2048", "Hangman", "Game Purge"])):
     await ctx.defer(ephemeral = True)
-    user: User = User(u.id)
+    if ctx.author.bot: return
 
+    user: User = User(u.id)
     if user.id in config.owners:
         match field:
             case "Tickets":
@@ -1003,6 +1035,8 @@ async def hackCommand(ctx, u: discord.Option(discord.User, "User to hack."), fie
 @bot.slash_command(name = "profile", description = "View a user's profile.")
 async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank to check your own.") = None, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
+    if ctx.author.bot: return
+    
     if user is None: user = ctx.author
     u: User = User(user.id)
 
@@ -1010,8 +1044,8 @@ async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank 
         discord.SelectOption(label = "Titles", value = "titles"),
         discord.SelectOption(label = "Backgrounds", value = "backgrounds"),
         discord.SelectOption(label = "Holo Cards", value = "holos"),
-        discord.SelectOption(label = "CAH Packs", value = "whiteonblack"),
-        discord.SelectOption(label = "trust Variants", value = "trust"),
+        discord.SelectOption(label = "WOB Packs", value = "whiteonblack"),
+        discord.SelectOption(label = "Trust Variants", value = "trust"),
         discord.SelectOption(label = "Achievements", value = "achievements"),
         discord.SelectOption(label = "Medals", value = "medals")
     ])
@@ -1024,11 +1058,57 @@ async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank 
         await interaction.response.defer(ephemeral = True)
 
         match moreSelect.values[0]:
-            case "titles": pass
-            case "backgrounds": pass
-            case "holos": pass
-            case "whiteonblack": pass
-            case "trust": pass
+            case "titles": 
+                str = ""
+                for i in u.titles: str += f"\n- {i}"
+                if len(str) == 0: str = "None"
+
+                await interaction.followup.send(embed = discord.Embed(title = "Titles:", description = str, color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = not show)
+            
+            case "backgrounds": 
+                await interaction.followup.send(embed = discord.Embed(title = "Backgrounds:", description = "None", color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = not show)
+            
+            case "holos": 
+                await interaction.followup.send(embed = discord.Embed(title = "Holo Arts:", description = "None", color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = not show)
+            
+            case "whiteonblack": 
+                str = ""
+                for i in u.expansions: str += f"\n- {i.value}"
+                if len(str) == 0: str = "None"
+
+                await interaction.followup.send(embed = discord.Embed(title = "White on Black packs:", description = str, color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = not show)
+            
+            case "trust": 
+                str = ""
+                for i in u.variants: str += f"\n- {i.value}"
+                if len(str) == 0: str = "None"
+
+                await interaction.followup.send(embed = discord.Embed(title = "Trust Variants:", description = str, color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = not show)
+            
+            case "achievements": 
+                e = discord.Embed(title = "Achievements:", description = u.achievement_str("theadas"), color = config.Color.COLORLESS).set_footer(text = config.footer)
+                
+                if u.achievement_str("bamboozle") != "None": e.add_field(name = "BAMBOOZLE!", value = u.achievement_str("bamboozle"), inline = False)
+                if u.achievement_str("whiteonblack") != "None": e.add_field(name = "White on Black", value = u.achievement_str("whiteonblack"), inline = False)
+                if u.achievement_str("checkers") != "None": e.add_field(name = "Checkers", value = u.achievement_str("checkers"), inline = False)
+                if u.achievement_str("chess") != "None": e.add_field(name = "Chess", value = u.achievement_str("chess"), inline = False)
+                if u.achievement_str("gridlock") != "None": e.add_field(name = "Gridlock", value = u.achievement_str("gridlock"), inline = False)
+                if u.achievement_str("trust") != "None": e.add_field(name = "Trust", value = u.achievement_str("trust"), inline = False)
+
+                await interaction.followup.send(embed = e, ephemeral = not show)
+            case "medals":
+                e = discord.Embed(title = "Medals:", color = config.Color.COLORLESS).set_footer(text = config.footer)
+
+                if u.stats["bamboozle"]["wins"] + u.stats["bamboozle"]["losses"] > 0: e.add_field(name = "BAMBOOZLE", value = f"```Manipulator: {u.stats['bamboozle']['medals']['manipulator']}\nPoker Face: {u.stats['bamboozle']['medals']['poker face']}\nBackstabber: {u.stats['bamboozle']['medals']['backstabber']}```", inline = False)
+                if u.stats["whiteonblack"]["games"] > 0: e.add_field(name = "White on Black", value = f"```Lucky: {u.stats['whiteonblack']['medals']['lucky']}\nFunny: {u.stats['whiteonblack']['medals']['funny']}\nNasty: {u.stats['whiteonblack']['medals']['nasty']}\nOffensive: {u.stats['whiteonblack']['medals']['offensive']}```", inline = False)
+                if u.stats["checkers"]["wins"] + u.stats["checkers"]["losses"] > 0: e.add_field(name = "Checkers", value = f"```Played Well: {u.stats['checkers']['medals']['played well']}```", inline = False)
+                if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: e.add_field(name = "Chess", value = f"```Knowledgeable: {u.stats['chess']['medals']['knowledgeable']}\nRisk Taker: {u.stats['chess']['medals']['risk taker']}\nPlayed fast: {u.stats['chess']['medals']['played Fast']}```", inline = False)
+                if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: e.add_field(name = "Gridlock", value = f"```Interesting Deck: {u.stats['gridlock']['medals']['interesting deck']}\nPlayed Well: {u.stats['gridlock']['medals']['played well']}\nPlayed Fast: {u.stats['gridlock']['medals']['played fast']}```", inline = False)
+                if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: e.add_field(name = "Trust", value = f"```Lucky: {u.stats['trust']['medals']['lucky']}\nSmart Investor: {u.stats['trust']['medals']['smart investor']}\nNegotiator: {u.stats['trust']['medals']['negotiator']}```", inline = False)
+                if len(e.fields) == 0: e.description = "None"
+
+                await interaction.followup.send(embed = e, ephemeral = not show)
+            
             case _: pass
 
     async def changeCallback(interaction):
@@ -1079,14 +1159,14 @@ async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank 
 
     embed = discord.Embed(title = user.name + (" ⭐" if u.subscribed_since else " ") + f" (player since <t:{u.join}:D>)", description = f"**Tickets:** {u.tickets}\n**Tokens:** {u.tokens}\n**Chips:** {u.chips}\n\n**Dice:** {u.dice}\n**Dominoes:** {u.dominoes}\n**Tiles:** {u.tiles}\n**Chits:** {u.chits}\n\n**Endorsements:** {u.endorsements}\n**Level:** {u.get_level()} | **XP:** {u.xp} `{xp_str}`\n**Turing Progress:** {len(u.turing)} / 6\n\n**Achievements:** {u.achievement_str('theadas')}", color = config.Color.COLORLESS).set_footer(text = config.footer)
     if u.stats["2048"]["games"] > 0: embed.add_field(name = '2048',  value = f"Games Played: {u.stats['2048']['games']}\n\nAchievements: {u.achievement_str('2048')}", inline = False)
-    if u.stats["bamboozle"]["wins"] + u.stats["bamboozle"]["losses"] > 0: embed.add_field(name = "BAMBOOZLE!", value = f"Skill Rating (SR): {math.floor(u.sr['bamboozle'])}\nGames Played: {u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses']}\nGames Won: {u.stats['bamboozle']['wins']} ({math.floor(u.stats['bamboozle']['wins'] / (u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses'])) * 100})% Winrate\nHolo Cards Owned: {bamboozle_holos}\n\nAchievements: {u.achievement_str('bamboozle')}\nMedals: ```Manipulator: {u.stats['bamboozle']['medals']['manipulator']}\nPoker Face: {u.stats['bamboozle']['medals']['poker face']}\nBackstabber: {u.stats['bamboozle']['medals']['backstabber']}```", inline = False)
+    if u.stats["bamboozle"]["wins"] + u.stats["bamboozle"]["losses"] > 0: embed.add_field(name = "BAMBOOZLE!", value = f"Skill Rating (SR): {math.floor(u.sr['bamboozle'])}\nGames Played: {u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses']}\nGames Won: {u.stats['bamboozle']['wins']} ({math.floor(u.stats['bamboozle']['wins'] / (u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses'])) * 100})% Winrate\nHolo Cards Owned: {bamboozle_holos}\n\nAchievements: {u.achievement_str('bamboozle')}", inline = False)
     if u.stats["blackjack"]["wins"] + u.stats["blackjack"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['blackjack']['wins'] + u.stats['blackjack']['losses']}\n\nAchievements: {u.achievement_str('blackjack')}", inline = False)
-    if u.stats["whiteonblack"]["games"] > 0: embed.add_field(name = "White on Black",  value = f"Games Played: {u.stats['whiteonblack']['games']}\n\nExpansions Owned: {expansion_str}\nAchievements: {u.achievement_str('whiteonblack')}\nMedals: ```Lucky: {u.stats['whiteonblack']['medals']['lucky']}\nFunny: {u.stats['whiteonblack']['medals']['funny']}\nNasty: {u.stats['whiteonblack']['medals']['nasty']}\nOffensive: {u.stats['whiteonblack']['medals']['offensive']}```", inline = False)
-    if u.stats["checkers"]["wins"] + u.stats["checkers"]["losses"] > 0: embed.add_field(name = "Checkers",  value = f"Skill Rating (SR): {math.floor(u.sr['checkers'])}\nGames Played: {u.stats['checkers']['wins'] + u.stats['checkers']['losses']}\nGames Won: {u.stats['checkers']['wins']} ({math.floor(u.stats['checkers']['wins'] / (u.stats['checkers']['wins'] + u.stats['checkers']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('checkers')}\nMedals: ```Played Well: {u.stats['checkers']['medals']['played well']}```", inline = False)
-    if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: embed.add_field(name = "Chess",  value = f"Skill Rating (SR): {math.floor(u.sr['chess'])}\nGames Played: {u.stats['chess']['wins'] + u.stats['chess']['losses']}\nGames Won: {u.stats['chess']['wins']} ({math.floor(u.stats['chess']['wins'] / (u.stats['chess']['wins'] + u.stats['chess']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('chess')}\nMedals: ```Knowledgeable: {u.stats['chess']['medals']['knowledgeable']}\nRisk Taker: {u.stats['chess']['medals']['risk taker']}\nPlayed fast: {u.stats['chess']['medals']['played Fast']}```", inline = False)
-    if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: embed.add_field(name = "Gridlock",  value = f"Skill Rating (SR): {math.floor(u.sr['gridlock'])}\nGames Played: {u.stats['gridlock']['wins'] + u.stats['gridlock']['losses']}\nGames Won: {u.stats['gridlock']['wins']} ({math.floor(u.stats['gridlock']['wins'] / (u.stats['gridlock']['wins'] + u.stats['gridlock']['losses'])) * 100})% Winrate\nHolo Cards Owned: {gridlock_holos}\n**Packs:** {u.packs[gridlock.Pack.SMALL]} Small, {u.packs[gridlock.Pack.LARGE]} Large, {u.packs[gridlock.Pack.PREMIUM]} Premium\n\nAchievements: {u.achievement_str('gridlock')}\nMedals: ```Interesting Deck: {u.stats['gridlock']['medals']['interesting deck']}\nPlayed Well: {u.stats['gridlock']['medals']['played well']}\nPlayed Fast: {u.stats['gridlock']['medals']['played fast']}```", inline = False)
+    if u.stats["whiteonblack"]["games"] > 0: embed.add_field(name = "White on Black",  value = f"Games Played: {u.stats['whiteonblack']['games']}\n\nExpansions Owned: {expansion_str}\nAchievements: {u.achievement_str('whiteonblack')}", inline = False)
+    if u.stats["checkers"]["wins"] + u.stats["checkers"]["losses"] > 0: embed.add_field(name = "Checkers",  value = f"Skill Rating (SR): {math.floor(u.sr['checkers'])}\nGames Played: {u.stats['checkers']['wins'] + u.stats['checkers']['losses']}\nGames Won: {u.stats['checkers']['wins']} ({math.floor(u.stats['checkers']['wins'] / (u.stats['checkers']['wins'] + u.stats['checkers']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('checkers')}", inline = False)
+    if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: embed.add_field(name = "Chess",  value = f"Skill Rating (SR): {math.floor(u.sr['chess'])}\nGames Played: {u.stats['chess']['wins'] + u.stats['chess']['losses']}\nGames Won: {u.stats['chess']['wins']} ({math.floor(u.stats['chess']['wins'] / (u.stats['chess']['wins'] + u.stats['chess']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('chess')}", inline = False)
+    if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: embed.add_field(name = "Gridlock",  value = f"Skill Rating (SR): {math.floor(u.sr['gridlock'])}\nGames Played: {u.stats['gridlock']['wins'] + u.stats['gridlock']['losses']}\nGames Won: {u.stats['gridlock']['wins']} ({math.floor(u.stats['gridlock']['wins'] / (u.stats['gridlock']['wins'] + u.stats['gridlock']['losses'])) * 100})% Winrate\nHolo Cards Owned: {gridlock_holos}\n**Packs:** {u.packs[gridlock.Pack.SMALL]} Small, {u.packs[gridlock.Pack.LARGE]} Large, {u.packs[gridlock.Pack.PREMIUM]} Premium\n\nAchievements: {u.achievement_str('gridlock')}", inline = False)
     if u.stats["hangman"]["wins"] + u.stats["hangman"]["losses"] > 0: embed.add_field(name = "Hangman",  value = f"Games Played: {u.stats['hangman']['wins'] + u.stats['hangman']['losses']}\n\nGames Won: {u.stats['hangman']['wins']} ({math.floor(u.stats['hangman']['wins'] / (u.stats['hangman']['wins'] + u.stats['hangman']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('hangman')}", inline = False)
-    if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: embed.add_field(name = "trust",  value = f"Games Played: {u.stats['trust']['wins'] + u.stats['trust']['losses']}\nGames Won: {u.stats['trust']['wins']} ({math.floor(u.stats['trust']['wins'] / (u.stats['trust']['wins'] + u.stats['trust']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('trust')}\nMedals: ```Lucky: {u.stats['trust']['medals']['lucky']}\nSmart Investor: {u.stats['trust']['medals']['smart investor']}\nNegotiator: {u.stats['trust']['medals']['negotiator']}```", inline = False)
+    if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: embed.add_field(name = "trust",  value = f"Games Played: {u.stats['trust']['wins'] + u.stats['trust']['losses']}\nGames Won: {u.stats['trust']['wins']} ({math.floor(u.stats['trust']['wins'] / (u.stats['trust']['wins'] + u.stats['trust']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('trust')}", inline = False)
     if u.stats["rps"]["wins"] + u.stats["rps"]["losses"] > 0: embed.add_field(name = "Rock Paper Scissors",  value = f"Games Played: {u.stats['rps']['wins'] + u.stats['rps']['losses']}\n\nGames Won: {u.stats['rps']['wins']} ({math.floor(u.stats['rps']['wins'] / (u.stats['rps']['wins'] + u.stats['rps']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('rps')}", inline = False)
     if u.stats["slots"]["wins"] + u.stats["slots"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['slots']['wins'] + u.stats['slots']['losses']}\n\nAchievements: {u.achievement_str('slots')}", inline = False)
     if u.stats["tictactoe"]["wins"] + u.stats["tictactoe"]["losses"] > 0: embed.add_field(name = "Tic Tac Toe",  value = f"Games Played: {u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses']}\n\nGames Won: {u.stats['tictactoe']['wins']} ({math.floor(u.stats['tictactoe']['wins'] / (u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('tictactoe')}", inline = False)
@@ -1096,8 +1176,9 @@ async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank 
 @bot.slash_command(name = "shop", description = "Turn your currency into shiny new toys!")
 async def shopCommand(ctx):
     await ctx.defer(ephemeral = True)
-    user = User(ctx.author.id)
+    if ctx.author.bot: return
 
+    user = User(ctx.author.id)
     ticketsSelect = discord.ui.Select(placeholder = "BUY WITH TICKETS", row = 1, options = [
         discord.SelectOption(label = "Chips", value = "chips"),
         discord.SelectOption(label = "Dice", value = "dice"),
@@ -1269,6 +1350,7 @@ async def shopCommand(ctx):
     
 @bot.slash_command(name = "settings", description = "View and modify server settings.")
 async def settingsCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
+    if ctx.author.bot: return
     await ctx.defer(ephemeral = not show)
 
     guild = Guild(ctx.guild.id)
@@ -1295,6 +1377,8 @@ async def settingsCommand(ctx, show: discord.Option(bool, "Select false to keep 
 @bot.slash_command(name = "help", description = "Learn how to use my commands!")
 async def helpCommand(ctx, category: discord.Option(str, "pick a command or game to get help with") = None, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
+    if ctx.author.bot: return
+
     if not category:
         default:  List[discord.Embed] = [discord.Embed(title = "Theadas Help", description = "Below is a list of my games and commands along with their descriptions. For more details or usage for one game or command, use /help <category> where category is the game or command.", color = config.Color.COLORLESS)]
         commands: List[discord.Embed] = [discord.Embed(title = "Commands", color = config.Color.COLORLESS)]
@@ -1385,6 +1469,8 @@ async def helpCommand(ctx, category: discord.Option(str, "pick a command or game
 @bot.slash_command(name = "leaderboard", description = "See how you stack up against other server members!")
 async def leaderboardCommand(ctx, page: discord.Option(int, "20 users on each page") = 1, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
+    if ctx.author.bot: return
+
     board = ""
     n = page
 
@@ -1403,6 +1489,8 @@ async def leaderboardCommand(ctx, page: discord.Option(int, "20 users on each pa
 @bot.slash_command(name = "credits", description = "A lot of cool people are behind this project!")
 async def creditsCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
+    if ctx.author.bot: return
+
     str = ""
 
     for i in config.credits.keys(): str += f"{i}: {config.credits[i]}\n"
@@ -1412,6 +1500,8 @@ async def creditsCommand(ctx, show: discord.Option(bool, "Select false to keep t
 @bot.slash_command(name = "support", description = "Need a hand?")
 async def supportCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
+    if ctx.author.bot: return
+
     embed = discord.Embed(title = "Support", description = "Use `/help` to learn how to use my commands or `/info` to learn about my games. If you need further support, have suggestions, or want to report a bug, join our support server:", color = config.Color.COLORLESS).set_footer(text = config.footer).set_thumbnail(url = "https://cdn.discordapp.com/icons/1101982625003995270/a_ee9d87e8365151c5940a2de8aea51c06.webp")
     await ctx.interaction.followup.send(view = discord.ui.View(discord.ui.Button(label = "Join", url = "https://discord.gg/CfPYvDZ6rF", style = discord.ButtonStyle.success)), embed = embed)
 
@@ -1419,6 +1509,8 @@ async def supportCommand(ctx, show: discord.Option(bool, "Select false to keep t
 @bot.user_command(name="View Profile")
 async def profileUserCommand(ctx, user: discord.Member):
     await ctx.defer(ephemeral = True)
+    if ctx.author.bot: return
+
     if user is None: user = ctx.author
     u: User = User(user.id)
 
@@ -1426,8 +1518,8 @@ async def profileUserCommand(ctx, user: discord.Member):
         discord.SelectOption(label = "Titles", value = "titles"),
         discord.SelectOption(label = "Backgrounds", value = "backgrounds"),
         discord.SelectOption(label = "Holo Cards", value = "holos"),
-        discord.SelectOption(label = "CAH Packs", value = "whiteonblack"),
-        discord.SelectOption(label = "trust Variants", value = "trust"),
+        discord.SelectOption(label = "WOB Packs", value = "whiteonblack"),
+        discord.SelectOption(label = "Trust Variants", value = "trust"),
         discord.SelectOption(label = "Achievements", value = "achievements"),
         discord.SelectOption(label = "Medals", value = "medals")
     ])
@@ -1496,14 +1588,14 @@ async def profileUserCommand(ctx, user: discord.Member):
     embed = discord.Embed(title = user.name + (" ⭐" if u.subscribed_since else " ") + f" (player since <t:{u.join}:D>)", description = f"**Tickets:** {u.tickets}\n**Tokens:** {u.tokens}\n**Chips:** {u.chips}\n\n**Dice:** {u.dice}\n**Dominoes:** {u.dominoes}\n**Tiles:** {u.tiles}\n**Chits:** {u.chits}\n\n**Endorsements:** {u.endorsements}\n**Level:** {u.get_level()} | **XP:** {u.xp} `{xp_str}`\n**Turing Progress:** {len(u.turing)} / 6\n\n**Achievements:** {u.achievement_str('theadas')}", color = config.Color.COLORLESS).set_footer(text = config.footer)
 
     if u.stats["2048"]["games"] > 0: embed.add_field(name = '2048',  value = f"Games Played: {u.stats['2048']['games']}\n\nAchievements: {u.achievement_str('2048')}", inline = False)
-    if u.stats["bamboozle"]["wins"] + u.stats["bamboozle"]["losses"] > 0: embed.add_field(name = "BAMBOOZLE!", value = f"Skill Rating (SR): {math.floor(u.sr['bamboozle'])}\nGames Played: {u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses']}\nGames Won: {u.stats['bamboozle']['wins']} ({math.floor(u.stats['bamboozle']['wins'] / (u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses'])) * 100})% Winrate\nHolo Cards Owned: {bamboozle_holos}\n\nAchievements: {u.achievement_str('bamboozle')}\nMedals: ```Manipulator: {u.stats['bamboozle']['medals']['manipulator']}\nPoker Face: {u.stats['bamboozle']['medals']['poker face']}\nBackstabber: {u.stats['bamboozle']['medals']['backstabber']}```", inline = False)
+    if u.stats["bamboozle"]["wins"] + u.stats["bamboozle"]["losses"] > 0: embed.add_field(name = "BAMBOOZLE!", value = f"Skill Rating (SR): {math.floor(u.sr['bamboozle'])}\nGames Played: {u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses']}\nGames Won: {u.stats['bamboozle']['wins']} ({math.floor(u.stats['bamboozle']['wins'] / (u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses'])) * 100})% Winrate\nHolo Cards Owned: {bamboozle_holos}\n\nAchievements: {u.achievement_str('bamboozle')}", inline = False)
     if u.stats["blackjack"]["wins"] + u.stats["blackjack"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['blackjack']['wins'] + u.stats['blackjack']['losses']}\n\nAchievements: {u.achievement_str('blackjack')}", inline = False)
-    if u.stats["whiteonblack"]["games"] > 0: embed.add_field(name = "White on Black",  value = f"Games Played: {u.stats['whiteonblack']['games']}\n\nExpansions Owned: {expansion_str}\nAchievements: {u.achievement_str('whiteonblack')}\nMedals: ```Lucky: {u.stats['whiteonblack']['medals']['lucky']}\nFunny: {u.stats['whiteonblack']['medals']['funny']}\nNasty: {u.stats['whiteonblack']['medals']['nasty']}\nOffensive: {u.stats['whiteonblack']['medals']['offensive']}```", inline = False)
-    if u.stats["checkers"]["wins"] + u.stats["checkers"]["losses"] > 0: embed.add_field(name = "Checkers",  value = f"Skill Rating (SR): {math.floor(u.sr['checkers'])}\nGames Played: {u.stats['checkers']['wins'] + u.stats['checkers']['losses']}\nGames Won: {u.stats['checkers']['wins']} ({math.floor(u.stats['checkers']['wins'] / (u.stats['checkers']['wins'] + u.stats['checkers']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('checkers')}\nMedals: ```Played Well: {u.stats['checkers']['medals']['played well']}```", inline = False)
-    if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: embed.add_field(name = "Chess",  value = f"Skill Rating (SR): {math.floor(u.sr['chess'])}\nGames Played: {u.stats['chess']['wins'] + u.stats['chess']['losses']}\nGames Won: {u.stats['chess']['wins']} ({math.floor(u.stats['chess']['wins'] / (u.stats['chess']['wins'] + u.stats['chess']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('chess')}\nMedals: ```Knowledgeable: {u.stats['chess']['medals']['knowledgeable']}\nRisk Taker: {u.stats['chess']['medals']['risk taker']}\nPlayed fast: {u.stats['chess']['medals']['played Fast']}```", inline = False)
-    if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: embed.add_field(name = "Gridlock",  value = f"Skill Rating (SR): {math.floor(u.sr['gridlock'])}\nGames Played: {u.stats['gridlock']['wins'] + u.stats['gridlock']['losses']}\nGames Won: {u.stats['gridlock']['wins']} ({math.floor(u.stats['gridlock']['wins'] / (u.stats['gridlock']['wins'] + u.stats['gridlock']['losses'])) * 100})% Winrate\nHolo Cards Owned: {gridlock_holos}\n**Packs:** {u.packs[gridlock.Pack.SMALL]} Small, {u.packs[gridlock.Pack.LARGE]} Large, {u.packs[gridlock.Pack.PREMIUM]} Premium\n\nAchievements: {u.achievement_str('gridlock')}\nMedals: ```Interesting Deck: {u.stats['gridlock']['medals']['interesting deck']}\nPlayed Well: {u.stats['gridlock']['medals']['played well']}\nPlayed Fast: {u.stats['gridlock']['medals']['played fast']}```", inline = False)
+    if u.stats["whiteonblack"]["games"] > 0: embed.add_field(name = "White on Black",  value = f"Games Played: {u.stats['whiteonblack']['games']}\n\nExpansions Owned: {expansion_str}\nAchievements: {u.achievement_str('whiteonblack')}", inline = False)
+    if u.stats["checkers"]["wins"] + u.stats["checkers"]["losses"] > 0: embed.add_field(name = "Checkers",  value = f"Skill Rating (SR): {math.floor(u.sr['checkers'])}\nGames Played: {u.stats['checkers']['wins'] + u.stats['checkers']['losses']}\nGames Won: {u.stats['checkers']['wins']} ({math.floor(u.stats['checkers']['wins'] / (u.stats['checkers']['wins'] + u.stats['checkers']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('checkers')}", inline = False)
+    if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: embed.add_field(name = "Chess",  value = f"Skill Rating (SR): {math.floor(u.sr['chess'])}\nGames Played: {u.stats['chess']['wins'] + u.stats['chess']['losses']}\nGames Won: {u.stats['chess']['wins']} ({math.floor(u.stats['chess']['wins'] / (u.stats['chess']['wins'] + u.stats['chess']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('chess')}", inline = False)
+    if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: embed.add_field(name = "Gridlock",  value = f"Skill Rating (SR): {math.floor(u.sr['gridlock'])}\nGames Played: {u.stats['gridlock']['wins'] + u.stats['gridlock']['losses']}\nGames Won: {u.stats['gridlock']['wins']} ({math.floor(u.stats['gridlock']['wins'] / (u.stats['gridlock']['wins'] + u.stats['gridlock']['losses'])) * 100})% Winrate\nHolo Cards Owned: {gridlock_holos}\n**Packs:** {u.packs[gridlock.Pack.SMALL]} Small, {u.packs[gridlock.Pack.LARGE]} Large, {u.packs[gridlock.Pack.PREMIUM]} Premium\n\nAchievements: {u.achievement_str('gridlock')}", inline = False)
     if u.stats["hangman"]["wins"] + u.stats["hangman"]["losses"] > 0: embed.add_field(name = "Hangman",  value = f"Games Played: {u.stats['hangman']['wins'] + u.stats['hangman']['losses']}\n\nGames Won: {u.stats['hangman']['wins']} ({math.floor(u.stats['hangman']['wins'] / (u.stats['hangman']['wins'] + u.stats['hangman']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('hangman')}", inline = False)
-    if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: embed.add_field(name = "trust",  value = f"Games Played: {u.stats['trust']['wins'] + u.stats['trust']['losses']}\nGames Won: {u.stats['trust']['wins']} ({math.floor(u.stats['trust']['wins'] / (u.stats['trust']['wins'] + u.stats['trust']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('trust')}\nMedals: ```Lucky: {u.stats['trust']['medals']['lucky']}\nSmart Investor: {u.stats['trust']['medals']['smart investor']}\nNegotiator: {u.stats['trust']['medals']['negotiator']}```", inline = False)
+    if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: embed.add_field(name = "trust",  value = f"Games Played: {u.stats['trust']['wins'] + u.stats['trust']['losses']}\nGames Won: {u.stats['trust']['wins']} ({math.floor(u.stats['trust']['wins'] / (u.stats['trust']['wins'] + u.stats['trust']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('trust')}", inline = False)
     if u.stats["rps"]["wins"] + u.stats["rps"]["losses"] > 0: embed.add_field(name = "Rock Paper Scissors",  value = f"Games Played: {u.stats['rps']['wins'] + u.stats['rps']['losses']}\n\nGames Won: {u.stats['rps']['wins']} ({math.floor(u.stats['rps']['wins'] / (u.stats['rps']['wins'] + u.stats['rps']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('rps')}", inline = False)
     if u.stats["slots"]["wins"] + u.stats["slots"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['slots']['wins'] + u.stats['slots']['losses']}\n\nAchievements: {u.achievement_str('slots')}", inline = False)
     if u.stats["tictactoe"]["wins"] + u.stats["tictactoe"]["losses"] > 0: embed.add_field(name = "Tic Tac Toe",  value = f"Games Played: {u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses']}\n\nGames Won: {u.stats['tictactoe']['wins']} ({math.floor(u.stats['tictactoe']['wins'] / (u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('tictactoe')}", inline = False)
@@ -1520,16 +1612,87 @@ async def profileUserCommand(ctx, user: discord.Member):
 @play.command(name = "bamboozle", description = "Fight to accomplish the goals of your secret role without getting lynched!")
 async def bamboozlePlayCommand(ctx):
     await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
+    # await ctx.defer(ephemeral = False)
+    # if ctx.author.bot: return
 
-    await ctx.interaction.followup.send(embed = embed)
+    # user = User(ctx.author.id)
+    # if user.game() != None:
+    #     g = user.game()
+    #     e, v, f = g.render()
+    #     g.message = await ctx.interaction.followup.send(embed = e, view = v, file = f)
+    
+    # else:
+    #     joinButton   = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "JOIN")
+    #     leaveButton  = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "LEAVE")
+    #     startButton  = discord.ui.Button(style = discord.ButtonStyle.success,   label = "START", disabled = True)
+
+    #     players = [ctx.author]
+    #     message = None
+    #     embed = discord.Embed(title = "Play BAMBOOZLE!", description = f"{ctx.author.mention} is starting a game. Press `JOIN` to join the game or `LEAVE` to leave it. Use `/info trust` to learn the basics of the game. When there are 2-8 players in the game, {ctx.author.mention} can use `START` to start the game. They can also `CANCEL` the game by deleting this message.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.BAMBOOZLE).set_footer(text = config.footer)
+    #     view = discord.ui.View(joinButton, leaveButton, startButton, timeout = None)
+
+    #     async def joinCallback(interaction):
+    #         await interaction.response.defer(ephemeral = True)
+    #         if interaction.user in players or User(interaction.user.id).game() != None:
+    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+    #             return
+
+    #         if len(players) >= 8:
+    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+    #             return
+
+    #         players.append(interaction.user)
+    #         User(interaction.user.id)
+    #         embed.description += f"\n- {interaction.user.mention}"
+    #         startButton.disabled = True if 2 <= len(players) >= 8 else False
+
+    #         await interaction.edit_original_response(embed = embed, view = view)
+
+    #     async def leaveCallback(interaction):
+    #         await interaction.response.defer(ephemeral = True)
+    #         if interaction.user.id == players[0]:
+    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+    #             return
+            
+    #         if interaction.user.id in players and User(interaction.user.id).game():
+    #             players.remove(interaction.user.id)
+    #             embed.description -= f"\n- {interaction.user.mention}"
+    #             startButton.disabled = True if 2 <= len(players) >= 8 else False
+
+    #             await interaction.edit_original_response(embed = embed, view = view)
+
+    #         else:
+    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+    #             return
+
+    #     async def startCallback(interaction):
+    #         await interaction.response.defer(ephemeral = True)
+    #         if interaction.user == players[0]:
+    #             g = bamboozle.Game([bamboozle.Player(i.id, i.name) for i in players])
+
+    #             await message.delete()
+    #             e, v = g.render()
+    #             g.message = await ctx.interaction.followup.send(embed = e, view = v)
+
+    #         else:
+    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+    #             return
+
+    #     joinButton.callback   = joinCallback
+    #     leaveButton.callback  = leaveCallback
+    #     startButton.callback  = startCallback
+
+    #     message = await ctx.interaction.followup.send(embed = embed, view = view)
 
 @play.command(name = "blackjack", description = "Draw cards from the deck, trying to be closest to 21 without going over.")
 async def blackjackPlayCommand(ctx, bet: discord.Option(int, "Bet an amount between 2 and 500 chips.")):
     await ctx.defer(ephemeral = True)
-    user = User(ctx.author.id)
+    if ctx.author.bot: return
 
+    user = User(ctx.author.id)
     if user.chips < bet: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_ENOUGH.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
     else:
         g = blackjack.Game(user, bet)
@@ -1539,12 +1702,21 @@ async def blackjackPlayCommand(ctx, bet: discord.Option(int, "Bet an amount betw
     
 @play.command(name = "whiteonblack", description = "Find the funniest response to the Czar\'s prompts!")
 # @discord.is_nsfw()
-async def whiteonblackPlayCommand(ctx):
+async def whiteonblackPlayCommand(ctx, packs: discord.Option(str, "Name packs to use, separated by commas") = None):
     await ctx.defer()
+    if ctx.author.bot: return
 
-    embed = discord.Embed()
+    expansions: List[whiteonblack.Expansion] = []
     user = User(ctx.author.id)
 
+    if not packs: expansions == [whiteonblack.Expansion.BASE]
+    else:
+        for p in packs.lower().split(", "):
+            for e in whiteonblack.Expansion:
+                if not e in user.expansions: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = f"❌ You do not own {e.value}! You can purchase it with /shop.", color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                elif p == e.value: expansions += e
+
+    embed = discord.Embed(title = "Play White on Black!", description = f"{ctx.author.mention} is starting a game. Click `JOIN` to join the game or `LEAVE` to leave it. Use `/info whiteonblack` to learn the basics of the game. When there are 2-10 players in the game, {ctx.author.mention} can use `START` to start the game. They can also cancel the game by deleting this message.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.COLORLESS).set_footer(text = config.footer)
     if user.game() is not None: 
         g = user.game()
         c, e, v = g.render()
@@ -1555,12 +1727,6 @@ async def whiteonblackPlayCommand(ctx):
         view = discord.ui.View(timeout = None)
         players = [ctx.author]
         message = None
-
-        embed.title = "Play White on Black!"
-        embed.description = f"{ctx.author.mention} is starting a game. Click `JOIN` to join the game or `LEAVE` to leave it. Use `/info whiteonblack` to learn the basics of the game. When there are 2-10 players in the game, {ctx.author.mention} can use `START` to start the game. They can also cancel the game by deleting this message.\n\nCurrent players:\n- {ctx.author.mention}"
-
-        embed.color  = config.Color.COLORLESS
-        embed.set_footer(text = config.footer)
 
         joinButton   = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "JOIN")
         leaveButton  = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "LEAVE")
@@ -1603,21 +1769,13 @@ async def whiteonblackPlayCommand(ctx):
         async def startCallback(interaction):
             await interaction.response.defer(ephemeral = True)
             if interaction.user == players[0]:
-                g = whiteonblack.Game([whiteonblack.Player(i.id, i.name) for i in players])
+                g = whiteonblack.Game([whiteonblack.Player(i.id, i.name) for i in players], expansions)
                 c, e, v = g.render()
 
                 await message.delete()
                 g.message = await ctx.interaction.followup.send(content = c, embeds = e, view = v)
 
-            else:
-                e = discord.Embed()
-
-                e.title       = random.choice(config.error_titles)
-                e.description = config.Error.PERMISSION.value
-                e.color       = config.Color.ERROR
-                e.set_footer(text = config.footer)
-
-                await interaction.followup.send(embed = e, ephemeral = True)
+            else: await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
 
         joinButton.callback   = joinCallback
         leaveButton.callback  = leaveCallback
@@ -1632,32 +1790,30 @@ async def whiteonblackPlayCommand(ctx):
 @play.command(name = "checkers", description = "Capture all your opponent's pieces to claim victory!")
 async def checkersPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
-
-    await ctx.interaction.followup.send(embed = embed)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
 
 @play.command(name = "chess", description = "Battle it out in this classic game of strategy")
 async def chessPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
-
-    await ctx.interaction.followup.send(embed = embed)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
 
 @play.command(name = "gridlock", description = "Collect cards and play them on a 5x5 grid to outsmart your opponents!")
 async def gridlockPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
-
-    await ctx.interaction.followup.send(embed = embed)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
 
 @play.command(name = "hangman", description = "Try and guess a word before you get hanged!")
 async def hangmanPlayCommand(ctx):
     await ctx.defer(ephemeral = True)
-    user = User(ctx.author.id)
+    if ctx.author.bot: return
 
+    user = User(ctx.author.id)
     if user.plays["hangman"] < 1: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_ENOUGH.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
     else:
         g = hangman.Game(user)
@@ -1667,16 +1823,16 @@ async def hangmanPlayCommand(ctx):
 @play.command(name = "holdem", description = "Get lucky and bluff your friends to win big!")
 async def holdemPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
-
-    await ctx.interaction.followup.send(embed = embed)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
 
 @play.command(name = "trust", description = "Race other players to buy up properties without going bankrupt!")
 async def trustPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
-    user = User(ctx.author.id)
+    if ctx.author.bot: return
 
+    user = User(ctx.author.id)
     if user.game() != None:
         g = user.game()
         e, v, f = g.render()
@@ -1745,35 +1901,62 @@ async def trustPlayCommand(ctx):
 
         message = await ctx.interaction.followup.send(embed = embed, view = view)
 
+@play.command(name = "quickdraw", description = "Whoever draws first after the countdown wins!")
+async def quickdrawPlayCommand(ctx, user: discord.Option(discord.Member, "Challenge this user to a quickdraw game!")):
+    await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
+
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
+    # await ctx.defer(ephemeral = False)
+    # if ctx.author.bot: return
+
+    # acceptButton = discord.ui.Button(label = "ACCEPT CHALLENGE", style = discord.ButtonStyle.secondary)
+    # message: discord.Message = None
+
+    # async def acceptCallback(interaction):
+    #     await interaction.response.defer(ephemeral = False)
+    #     if interaction.user.id != user.id: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
+    #     else:
+    #         await message.edit(embed = discord.Embed(title = f"{user.name} has accepted {ctx.author.name}'s challenge to a Quickdraw!", description = "A countdown has been started. After the countdown, a 💥 will appear, and the first player to click it wins!", color = config.Color.COLORLESS).set_footer(text = config.footer), view = discord.ui.View())
+    #         await asyncio.sleep(random.randint(2, 15))
+    #         await message.add_reaction("💥")
+
+    #         try: _, u, = await bot.wait_for("reaction_add", check = lambda r, u: u in [ctx.author, user] and str(r.emoji) == "💥", timeout = 30)
+    #         except asyncio.TimeoutError: await message.edit(embed = discord.Embed(title = f"☁️ Huh? No one drew in time.", color = config.Color.COLORLESS).set_footer(text = config.footer))
+    #         else: 
+    #             await message.edit(embed = discord.Embed(title = f"💥 Bang! {u.name} draws first!", color = config.Color.COLORLESS).set_footer(text = config.footer))
+    #             await message.clear_reactions()
+
+    # acceptButton.callback = acceptCallback
+    # message = await ctx.interaction.followup.send(embed = discord.Embed(title = f"{ctx.author.name} has challenged {user.name} to a Quickdraw!", description = "When they accept the challenge, a countdown will start. After the countdown, a 💥 will appear, and the first player to click it wins!", color = config.Color.COLORLESS).set_footer(text = config.footer), view = discord.ui.View(acceptButton), ephemeral = True)
+
 @play.command(name = "rockpaperscissors", description = "Rock beats scissors, paper beats rock, and scissors beat paper.")
 async def rockpaperscissorsPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
-
-    await ctx.interaction.followup.send(embed = embed)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
 
 @play.command(name = "slots", description = "Get 3 in a row to win big!")
 async def slotsPlayCommand(ctx):
     await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
-
-    await ctx.interaction.followup.send(embed = embed)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
 
 @play.command(name = "tictactoe", description = "Get 3 in a row before your opponent can.")
 async def tictactoePlayCommand(ctx):
     await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True)
-
-    await ctx.interaction.followup.send(embed = embed)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
 
 @play.command(name = "twentyfortyeight", description = "Merge tiles until you run out of space.")
 async def twentyfortyeightPlayCommand(ctx):
     await ctx.defer(ephemeral = True)
-    user = User(ctx.author.id)
+    if ctx.author.bot: return
 
+    user = User(ctx.author.id)
     if user.plays["2048"] < 1: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_ENOUGH.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
     else:
         g = twentyfortyeight.Game(user)

@@ -32,7 +32,16 @@ description = '''
 '''
 
 class Expansion(Enum):
-    BASE = "Base Set"
+    BASE = ("Base Set", "data/whiteonblack_cards/base_blacks.json", "data/whiteonblack_cards/base_whites.json")
+
+    def __new__(cls, value, blacks, whites):
+        obj = object.__new__(cls)
+        obj._value_ = value
+
+        obj.blacks = blacks
+        obj.whites = whites
+
+        return obj
 
 class Card:
     def __init__(self, name, id, blanks):
@@ -54,10 +63,7 @@ class Player:
 
     def draw(self, game, n):
         whites = game.whites
-        if len(whites) <= 0: 
-            wd = json.load(open("data/whiteonblack_cards/whites.json"))
-            whites = [Card(i, str(wd.index(i)), None) for i in wd]
-            random.shuffle(whites)
+        if len(whites) <= 0: game.shuffle_whites()
 
         for _ in range(n):
             card = random.choice(whites)
@@ -74,25 +80,21 @@ class Player:
         game.save()
 
 class Game():
-    def __init__(self, players):
+    def __init__(self, players, expansions):
         self.players: List[Player] = players
         self.losers:  List[Player] = []
+        self.round: int = 1
 
         self.message: discord.Message = None
         self.rounder: str = None
-        self.czar: Player = random.choice(players)
-        self.round: int = 1
 
-        wd = json.load(open("data/whiteonblack_cards/whites.json"))
-        bd = json.load(open("data/whiteonblack_cards/blacks.json"))
-
-        self.blacks: List[Card] = [Card(i["name"], str(bd.index(i)), i["blanks"]) for i in bd]
-        self.whites: List[Card] = [Card(i, str(wd.index(i)), None) for i in wd]
+        self.expansions: List[Expansion] = expansions
         self.plays:  dict  = {}
 
-        random.shuffle(self.blacks)
-        random.shuffle(self.whites)
+        self.shuffle_blacks()
+        self.shuffle_whites()
 
+        self.czar: Player = random.choice(players)
         self.black: Card = self.blacks.pop(random.randint(0, len(self.blacks) - 1))
 
         for i in self.players:
@@ -111,18 +113,36 @@ class Game():
         game.message = None
         for i in self.players: pickle.dump(game, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{i.id}.p", "wb"))
 
+    def shuffle_blacks(self):
+        self.blacks = []
+        for e in self.expansions:
+            bd = json.load(open(e.blacks))
+            for i in [Card(i["name"], str(bd.index(i)), i["blanks"]) for i in bd]: self.blacks.append(i)
+            random.shuffle(self.blacks)
+
+    def shuffle_whites(self):
+        self.whites = []
+        for e in self.expansions:
+            wd = json.load(open(e.whites))
+            for i in [Card(i, str(wd.index(i)), None) for i in wd]: self.whites.append(i)
+            random.shuffle(self.whites)
+
     def render(self):
         embeds = [discord.Embed(color = config.Color.BLACK_CARD, title = self.black.name)]
         content = f">>> **Round:** {self.round} | **Last Winner:** {self.rounder}\n"
         view = discord.ui.View(timeout = None)
         
         for i in self.players: content += f"\n**{i.name}:** {i.points} points" + ((" (Ready)" if len(self.plays[i.id]) == self.black.blanks else " (Not ready)") if i.id != self.czar.id else " (Czar)")
-        for p in self.plays.keys():
-            if len(self.plays[p]) > 0:
-                s = ""
-                for i in self.plays[p]: 
-                    s += i.name if len(s) == 0 else f" | {i.name}"
-                embeds.append(discord.Embed(description = s, color = config.Color.WHITE_CARD))
+        if all(self.plays[i.id] is not None for i in self.players):
+            whites = []
+            for p in self.plays.keys():
+                if len(self.plays[p]) > 0:
+                    s = ""
+                    for i in self.plays[p]: 
+                        s += i.name if len(s) == 0 else f" | {i.name}"
+                    whites.append(discord.Embed(description = s, color = config.Color.WHITE_CARD))
+            random.shuffle(whites)
+            for i in whites: embeds.append(i)
 
         playButton     = discord.ui.Button(style = discord.ButtonStyle.secondary, emoji = "🃏", label = "PLAY A CARD", row = 0)
         chooseButton   = discord.ui.Button(style = discord.ButtonStyle.secondary, emoji = "🎖️", label = "CHOOSE A WINNER", row = 0)
@@ -205,10 +225,7 @@ class Game():
                     await interaction.response.defer(ephemeral = True)
                     index = self.players.index(self.czar)
 
-                    if len(self.blacks) <= 0: 
-                        bd = json.load(open("data/whiteonblack_cards/blacks.json"))
-                        self.blacks = [Card(i["name"], str(bd.index(i)), i["blanks"]) for i in bd]
-                        random.shuffle(self.blacks)
+                    if len(self.blacks) <= 0: self.shuffle_blacks()
 
                     for i in self.players:
                         i.mulled = False
@@ -296,7 +313,7 @@ class Game():
             user.save()
             pickle.dump(None, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{user.id}.p", "wb"))
 
-            if len(self.players) > 1: await interaction.followup.send(embed = discord.Embed(title = "You have conceded!", description = "You have been removed from the game and your cards have been shuffled back into the deck.", color = config.Color.COLORLESS))
+            if len(self.players) > 1: await interaction.followup.send(embed = discord.Embed(title = "You have conceded!", description = "You have been removed from the game and your cards have been shuffled back into the deck.", color = config.Color.COLORLESS), ephemeral = True)
             else:
                 user = User(self.players[0].id)
                 user.stats["whiteonblack"]["games"] += 1

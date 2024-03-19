@@ -57,8 +57,8 @@ class Tile:
         self.value: int = value
         self.merged: bool = False
 
-    def font(self) -> tuple[int, int, int]:
-        return (119, 110, 101) if self.value < 8 else (249, 246, 242)
+    def font(self) -> tuple[int, int, int]: return (119, 110, 101) if self.value < 8 else (249, 246, 242)
+    def font_size(self) -> int: return 95 if self.value < 128 else 88
 
     def color(self) -> tuple[int, int, int]:
         match self.value:
@@ -250,7 +250,7 @@ class Game():
         for row in self.board:
             for i in row:
                 coords = (margin + ((tilesize + margin) * (i.position[0])), margin + ((tilesize + margin) * (i.position[1])))
-                font = ImageFont.truetype("times", 100)
+                font = ImageFont.truetype("times", i.font_size())
 
                 draw = ImageDraw.Draw(board)
                 draw.rounded_rectangle(xy = (coords[0], coords[1], coords[0] + tilesize, coords[1] + tilesize), radius = corner,  fill = i.color())
@@ -289,7 +289,7 @@ class Game():
             await self.message.edit(embed = e, view = v, file = f)
 
         upButton.callback, leftButton.callback, rightButton.callback, downButton.callback = upCallback, leftCallback, rightCallback, downCallback
-        return discord.Embed(color = config.Color.COLORLESS).set_image(url = "attachment://board.png").set_footer(text = config.footer), view, discord.File(fp = bytes, filename = "board.png")
+        return discord.Embed(color = config.Color.COLORLESS).set_image(url = "attachment://board.png").set_footer(text = config.footer + "| Original by Gabrielle Cirulli"), view, discord.File(fp = bytes, filename = "board.png")
     
     class Achievement(Enum):
         

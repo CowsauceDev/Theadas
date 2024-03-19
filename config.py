@@ -18,7 +18,7 @@
 
 from enum import Enum
 
-version = "0.4"
+version = "0.5"
 token   = ""
 owners  = [645064200502378506, 397898909625745419, 322176427715985421]
 
@@ -56,6 +56,9 @@ class Error(Enum):
     # WOB
     CZAR = "❌ You cannot play a card while you are the Czar."
     NOT_CZAR = "❌ Only the Czar can choose a winning card."
+
+    # BAMBOOZLE!
+    NO_ACTION = "❌ You have no action right now."
     
 class Color():
     COLORLESS = 0x2b2d31
@@ -68,3 +71,6 @@ class Color():
 
     # Trust
     HELLARED  = 0xEE2051
+
+    # BAMBOOZLE!
+    BAMBOOZLE = 0xc2b280
