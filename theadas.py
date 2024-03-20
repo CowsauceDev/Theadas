@@ -395,21 +395,27 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member: discord.Member):
-    if member.guild.id != "1101982625003995270" or member.bot: return
+    if member.guild.id != 1101982625003995270 or member.bot: return
     else:
         user = User(member.id)
-        if user.joined: bot.fetch_channel(1101989112619204689).send(f"Look! The portal is glowing! It's {member.mention}!")
+        if user.joined: 
+            channel: discord.TextChannel = await bot.fetch_channel(1101989112619204689)
+            await channel.send(f"Look! The portal is glowing! It's {member.mention}!")
         else:
             xp, tickets, jackpot = user.award()
-            bot.fetch_channel(1101989112619204689).send(embed = discord.Embed(title = f"Look! The portal is glowing! It's {member.mention}!", description = f"For joining the support server, they received **{xp}** experience and **{tickets}** tickets." + (f"\n**JACKPOT!**\nThey also got {jackpot}!" if jackpot else ""), color = 0x229acc).set_footer(text = config.footer))
+            channel: discord.TextChannel = await bot.fetch_channel(1101989112619204689)
+            await channel.send(embed = discord.Embed(title = f"Look! The portal is glowing! It's {member.name}!", description = f"For joining the support server, they received **{xp}** experience and **{tickets}** tickets." + (f"\n**JACKPOT!**\nThey also got {jackpot}!" if jackpot else ""), color = 0x229acc).set_footer(text = config.footer))
             
             user.joined = True
             user.save()
 
 @bot.event
-async def on_member_leave(member: discord.Member):
-    if member.guild.id != "1101982625003995270" or member.bot: return
-    else: bot.fetch_channel(1101989112619204689).send(f"{member.name} vanished...")
+async def on_raw_member_remove(data):
+    guild = await bot.fetch_guild(data.guild_id)
+    if guild.id != 1101982625003995270 or data.user.bot: return
+    else: 
+        channel: discord.TextChannel = await bot.fetch_channel(1101989112619204689)
+        await channel.send(f"{data.user.name} vanished...")
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -1450,7 +1456,6 @@ async def helpCommand(ctx, category: discord.Option(str, "pick a command or game
             n: int = 0
 
             for i in bot.application_commands:
-                print(True)
                 if n >= 25: commands.append(discord.Embed(color = config.Color.COLORLESS))
                 commands[-1].add_field(name = i.name, value = i.description if i.description else i.name, color = config.Color.COLORLESS)
                 n += 1
