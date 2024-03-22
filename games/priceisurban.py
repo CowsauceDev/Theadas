@@ -45,7 +45,7 @@ class Button(discord.ui.Button):
             
             elif self.likes == game.likes: 
                 e, _ = game.render()
-                e.color = config.color.SUCCESS
+                e.color = config.Color.SUCCESS
                 await game.message.edit(embed = e, view = discord.ui.View())
             
             else: 
