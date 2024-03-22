@@ -1,5 +1,5 @@
 # Theadas Bot is a Discord bot allowing users to play various games with each other.
-# Copyright © 2024  Jester (@cowsauce)
+# Copyright © 2024 Jester (@cowsauce)
 
 # This file is part of Theadas Bot.
 
@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from enum import Enum
 
@@ -52,6 +52,7 @@ class Error(Enum):
     ALREADY_DID_THAT = "❌ You already did that."
     WRONG_TURN = "❌ Wait until your turn to do that."
     NOT_ENOUGH = "❌ You do not have enough for that!"
+    NSFW = "❌ This can only be used in an NSFW channel!"
 
     # WOB
     CZAR = "❌ You cannot play a card while you are the Czar."
@@ -59,6 +60,8 @@ class Error(Enum):
 
     # BAMBOOZLE!
     NO_ACTION = "❌ You have no action right now."
+    DEAD      = "❌ You are dead! Dead people cannot do anything. (Remember to make sure you also are not talking to anyone unless the **Icer** performs a seance with you.)"
+    CANT_KILL  = "❌ You are not a wolf! Only wolves can vote to kill someone each night."
     
 class Color():
     COLORLESS = 0x2b2d31

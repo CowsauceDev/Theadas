@@ -1,5 +1,5 @@
 # Theadas Bot is a Discord bot allowing users to play various games with each other.
-# Copyright © 2024  Jester (@cowsauce)
+# Copyright © 2024 Jester (@cowsauce)
 
 # This file is part of Theadas Bot.
 
@@ -14,13 +14,15 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import games.trust as trust
 
 class chest_7(trust.Card):
-    def __init__(self):
-        super().__init__("Yay! Your Parents Died!", "You receive an inheritance of $100.", "assets/card.png")
+    def __init__(self, variant: trust.Variant):
+        match variant:
+            case trust.Variant.BASE: super().__init__("", "Holiday fund matures. Receive $100", "assets/card.png")
+            case trust.Variant.HELLOPOLY: super().__init__("Yay! Your Parents Died!", "You receive an inheritance of $100.", "assets/card.png")
 
     def on_draw(self, player, game):
         player.cash += 100

@@ -1,5 +1,5 @@
 # Theadas Bot is a Discord bot allowing users to play various games with each other.
-# Copyright © 2024  Jester (@cowsauce)
+# Copyright © 2024 Jester (@cowsauce)
 
 # This file is part of Theadas Bot.
 
@@ -14,13 +14,14 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import config 
 
 import discord
 from discord.ext import tasks
 from discord.ext.pages import Page, Paginator, PaginatorButton
+from discord.ext.commands import CooldownMapping, BucketType
 
 import math, random, os, pickle, asyncio
 from enum     import Enum
@@ -35,8 +36,11 @@ if __name__ == "__main__":
     import games.checkers         as checkers
     import games.chess            as chess
     import games.gridlock         as gridlock
+    import games.groupicide       as groupicide
     import games.hangman          as hangman
     import games.holdem           as holdem
+    import games.priceisurban     as priceisurban
+    import games.quickdraw        as quickdraw
     import games.trust            as trust
     import games.rps              as rps
     import games.slots            as slots
@@ -50,8 +54,11 @@ if __name__ == "__main__":
         checkers,
         chess,
         gridlock,
+        groupicide,
         hangman,
         holdem,
+        priceisurban,
+        quickdraw,
         trust,
         rps,
         slots,
@@ -329,28 +336,38 @@ class User:
         self.xp += xp
 
         if int(random.randint(1, 100) / (1.2 if win else 1)) <= 10:
-            match random.randint(1, 6):
-                case 1:
-                    t = random.randint(228, 268)
-                    self.tickets += t
-                    jackpot = f"**{t}** extra tickets"
-                case 2: 
-                    self.dice += 1
-                    jackpot = "a free **dice**"
-                case 3: 
-                    game = random.choice(self.game().keys())
-                    self.plays[game] += 1
-                    jackpot = "a free play for **{game}**"
-                case 4: 
-                    c = random.randint(50, 300)
-                    self.tickets += c
-                    jackpot = f"**{c}** free chips"
-                case 5: 
-                    self.tokens += 10
-                    jackpot = "**10** free Tokens"
-                case 6: 
-                    self.packs[gridlock.Pack.SMALL] += 1
-                    jackpot = "a free **Small Pack** for Gridlock"
+            chance = random.randint(1, 25)
+
+            if chance == 1:
+                self.expansions.append(whiteonblack.Expansion.ADENA)
+                jackpot = "The **Adena/Theadas inside jokes** pack for White on Black!"
+
+            if 2 <= chance <= 5: 
+                t = random.randint(228, 268)
+                self.tickets += t
+                jackpot = f"**{t}** extra tickets"
+
+            if 6 <= chance <= 9: 
+                self.dice += 1
+                jackpot = "a free **dice**"
+
+            if 10 <= chance <= 13: 
+                game = random.choice(self.game().keys())
+                self.plays[game] += 1
+                jackpot = "a free play for **{game}**"
+
+            if 14 <= chance <= 17: 
+                c = random.randint(50, 300)
+                self.tickets += c
+                jackpot = f"**{c}** free chips"
+
+            if 18 <= chance <= 21: 
+                self.tokens += 10
+                jackpot = "**10** free Tokens"
+
+            if 22 <= chance <= 25: 
+                self.packs[gridlock.Pack.SMALL] += 1
+                jackpot = "a free **Small Pack** for Gridlock"
         
         self.claimed = True
         self.save()
@@ -370,13 +387,9 @@ class Guild:
         self.save()
 
     def save(self): pickle.dump(self, open(f"{os.path.join(os.path.dirname(__file__), 'data/guilds')}/{self.id}.p", "wb"))
-intents = discord.Intents()
-intents.members = True
-intents.guilds = True
-intents.message_content = True
-intents.guild_messages = True
-intents.guild_reactions = True
-bot = discord.Bot(activity = discord.Game("Play games with friends!"), intents = intents)
+
+bot = discord.Bot(activity = discord.Game("Play games with friends!"), intents = discord.Intents.all())
+message_cooldown = CooldownMapping.from_cooldown(1.0, 60.0, BucketType.user)
 
 @tasks.loop(hours = 24)
 async def reset_plays():
@@ -392,6 +405,7 @@ async def reset_plays():
 async def on_ready():
     await bot.register_commands(delete_existing = True)
     reset_plays.start()
+    print("Bot is running!")
 
 @bot.event
 async def on_member_join(member: discord.Member):
@@ -417,14 +431,23 @@ async def on_raw_member_remove(data):
         channel: discord.TextChannel = await bot.fetch_channel(1101989112619204689)
         await channel.send(f"{data.user.name} vanished...")
 
+
 @bot.event
 async def on_message(message: discord.Message):
-    if message.author.bot: return
-    else: 
+    bucket = message_cooldown.get_bucket(message)
+    retry_after = bucket.update_rate_limit()
+
+    if retry_after or message.author.bot: return
+    if not message.guild:
+        channel: discord.TextChannel = await bot.fetch_channel(1170919897157603438)
+        await channel.send(embed = discord.Embed(description = message.content, color = config.Color.COLORLESS).set_footer(text = config.footer).set_author(name = message.author.name, icon_url = message.author.avatar.url))
+        await message.reply(embed = discord.Embed(title = "📨 Modmail Sent!", description = "NOTE: The mods will not receive any attachments from your message. You can send another message in 60 seconds.", color = config.color.SUCCESS).set_footer(text = config.footer))
+    
+    else:
         user = User(message.author.id)
         level = user.get_level()
 
-        user.xp += 1
+        user.xp += random.randint(5, 20)
         user.save()
 
         if user.get_level() > level: await message.channel.send(embed = discord.Embed(title = f"{message.author.name} is now Level {user.get_level()}!", color = config.Color.COLORLESS).set_footer(text = config.footer))
@@ -435,13 +458,7 @@ play = bot.create_group("play", "Play a game!")
 async def pingCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
     if ctx.author.bot: return
-
-    embed = discord.Embed(title = "Pong!", description = f"The bot's latency is currently {round(bot.latency, 2)}ms.").set_footer(text = config.footer)
-
-    if bot.latency > 30: embed.color = discord.Color.red()
-    else: embed.color = discord.Color.green()
-
-    await ctx.interaction.followup.send(embed = embed)
+    await ctx.interaction.followup.send(embed = discord.Embed(title = "Pong!", description = f"The bot's latency is currently {round(bot.latency, 2)}ms.", color = discord.Color.red() if bot.latency > 30 else config.color.SUCCESS).set_footer(text = config.footer))
 
 @bot.slash_command(name = "summon", description = "Spend dice for a chance to win cool items!")
 async def summonCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
@@ -1179,6 +1196,148 @@ async def profileCommand(ctx, user: discord.Option(discord.Member, "Leave blank 
 
     await ctx.interaction.followup.send(embed = embed, view = view)
 
+@bot.user_command(name="View Profile")
+async def profileUserCommand(ctx, user: discord.Member):
+    await ctx.defer(ephemeral = True)
+    if ctx.author.bot: return
+
+    if user is None: user = ctx.author
+    u: User = User(user.id)
+
+    moreSelect = discord.ui.Select(placeholder = "See More...", options = [
+        discord.SelectOption(label = "Titles", value = "titles"),
+        discord.SelectOption(label = "Backgrounds", value = "backgrounds"),
+        discord.SelectOption(label = "Holo Cards", value = "holos"),
+        discord.SelectOption(label = "WOB Packs", value = "whiteonblack"),
+        discord.SelectOption(label = "Trust Variants", value = "trust"),
+        discord.SelectOption(label = "Achievements", value = "achievements"),
+        discord.SelectOption(label = "Medals", value = "medals")
+    ])
+
+    changeSelect = discord.ui.Select(placeholder = "Change Your...")
+    if len(u.titles) > 1: changeSelect.add_option(label = "Title", value = "title")
+    if len(u.backgrounds) > 1: changeSelect.add_option(label = "Profile Background", value = "background")
+
+    async def moreCallback(interaction):
+        await interaction.response.defer(ephemeral = True)
+
+        match moreSelect.values[0]:
+            case "titles": 
+                str = ""
+                for i in u.titles: str += f"\n- {i}"
+                if len(str) == 0: str = "None"
+
+                await interaction.followup.send(embed = discord.Embed(title = "Titles:", description = str, color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = True)
+            
+            case "backgrounds": 
+                await interaction.followup.send(embed = discord.Embed(title = "Backgrounds:", description = "None", color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = True)
+            
+            case "holos": 
+                await interaction.followup.send(embed = discord.Embed(title = "Holo Arts:", description = "None", color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = True)
+            
+            case "whiteonblack": 
+                str = ""
+                for i in u.expansions: str += f"\n- {i.value}"
+                if len(str) == 0: str = "None"
+
+                await interaction.followup.send(embed = discord.Embed(title = "White on Black packs:", description = str, color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = True)
+            
+            case "trust": 
+                str = ""
+                for i in u.variants: str += f"\n- {i.value}"
+                if len(str) == 0: str = "None"
+
+                await interaction.followup.send(embed = discord.Embed(title = "Trust Variants:", description = str, color = config.Color.COLORLESS).set_footer(text = config.footer), ephemeral = True)
+            
+            case "achievements": 
+                e = discord.Embed(title = "Achievements:", description = u.achievement_str("theadas"), color = config.Color.COLORLESS).set_footer(text = config.footer)
+                
+                if u.achievement_str("bamboozle") != "None": e.add_field(name = "BAMBOOZLE!", value = u.achievement_str("bamboozle"), inline = False)
+                if u.achievement_str("whiteonblack") != "None": e.add_field(name = "White on Black", value = u.achievement_str("whiteonblack"), inline = False)
+                if u.achievement_str("checkers") != "None": e.add_field(name = "Checkers", value = u.achievement_str("checkers"), inline = False)
+                if u.achievement_str("chess") != "None": e.add_field(name = "Chess", value = u.achievement_str("chess"), inline = False)
+                if u.achievement_str("gridlock") != "None": e.add_field(name = "Gridlock", value = u.achievement_str("gridlock"), inline = False)
+                if u.achievement_str("trust") != "None": e.add_field(name = "Trust", value = u.achievement_str("trust"), inline = False)
+
+                await interaction.followup.send(embed = e, ephemeral = True)
+            case "medals":
+                e = discord.Embed(title = "Medals:", color = config.Color.COLORLESS).set_footer(text = config.footer)
+
+                if u.stats["bamboozle"]["wins"] + u.stats["bamboozle"]["losses"] > 0: e.add_field(name = "BAMBOOZLE", value = f"```Manipulator: {u.stats['bamboozle']['medals']['manipulator']}\nPoker Face: {u.stats['bamboozle']['medals']['poker face']}\nBackstabber: {u.stats['bamboozle']['medals']['backstabber']}```", inline = False)
+                if u.stats["whiteonblack"]["games"] > 0: e.add_field(name = "White on Black", value = f"```Lucky: {u.stats['whiteonblack']['medals']['lucky']}\nFunny: {u.stats['whiteonblack']['medals']['funny']}\nNasty: {u.stats['whiteonblack']['medals']['nasty']}\nOffensive: {u.stats['whiteonblack']['medals']['offensive']}```", inline = False)
+                if u.stats["checkers"]["wins"] + u.stats["checkers"]["losses"] > 0: e.add_field(name = "Checkers", value = f"```Played Well: {u.stats['checkers']['medals']['played well']}```", inline = False)
+                if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: e.add_field(name = "Chess", value = f"```Knowledgeable: {u.stats['chess']['medals']['knowledgeable']}\nRisk Taker: {u.stats['chess']['medals']['risk taker']}\nPlayed fast: {u.stats['chess']['medals']['played Fast']}```", inline = False)
+                if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: e.add_field(name = "Gridlock", value = f"```Interesting Deck: {u.stats['gridlock']['medals']['interesting deck']}\nPlayed Well: {u.stats['gridlock']['medals']['played well']}\nPlayed Fast: {u.stats['gridlock']['medals']['played fast']}```", inline = False)
+                if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: e.add_field(name = "Trust", value = f"```Lucky: {u.stats['trust']['medals']['lucky']}\nSmart Investor: {u.stats['trust']['medals']['smart investor']}\nNegotiator: {u.stats['trust']['medals']['negotiator']}```", inline = False)
+                if len(e.fields) == 0: e.description = "None"
+
+                await interaction.followup.send(embed = e, ephemeral = True)
+            
+            case _: pass
+
+    async def changeCallback(interaction):
+        await interaction.response.defer(ephemeral = True)
+        
+        match changeSelect.values[0]:
+            case "title": pass
+            case "background": pass
+            case _: pass
+
+    moreSelect.callback   = moreCallback
+    changeSelect.callback = changeCallback
+
+    view = discord.ui.View(moreSelect)
+    if user == ctx.author and len(changeSelect.options) > 0: view.add_item(changeSelect)
+
+    xp_str = ""
+    titles_str = ""
+    guides_str = ""
+    variant_str = ""
+    expansion_str = ""
+    gridlock_holos = 0
+    bamboozle_holos = 0
+
+    for i in range(10): xp_str += "▰" if i < round((u.xp / u.get_next_level()) * 10) else "▱"
+    for i in u.variants: variant_str += f", {i.value}"
+    for i in u.expansions: expansion_str += f"{i.value}, "
+    for i in u.card_holos: gridlock_holos += 1 if type(i) == gridlock.Game.Card else 0
+    for i in u.card_holos: bamboozle_holos += 1 if type(i) == bamboozle.Game.Role else 0
+
+    for i in u.titles:  
+        if u.titles.index(i) <= 4: titles_str += f", \"{i}\""
+        else:
+            titles_str += f", and **{len(u.titles) - u.titles.index(i)}** more"
+            break
+    
+    for i in u.guides:  
+        if u.guides.index(i) <= 4: guides_str += f", {i}"
+        else:
+            guides_str += f", and **{len(u.guides) - u.guides.index(i)}** more"
+            break
+
+    if len(variant_str) > 0: variant_str = variant_str[:-2]
+    else: variant_str = "None"
+
+    if len(expansion_str) > 0: expansion_str = expansion_str[:-2]
+    else: expansion_str = "None"
+
+    embed = discord.Embed(title = user.name + (" ⭐" if u.subscribed_since else " ") + f" (player since <t:{u.join}:D>)", description = f"**Tickets:** {u.tickets}\n**Tokens:** {u.tokens}\n**Chips:** {u.chips}\n\n**Dice:** {u.dice}\n**Dominoes:** {u.dominoes}\n**Tiles:** {u.tiles}\n**Chits:** {u.chits}\n\n**Endorsements:** {u.endorsements}\n**Level:** {u.get_level()} | **XP:** {u.xp} `{xp_str}`\n**Turing Progress:** {len(u.turing)} / 6\n\n**Achievements:** {u.achievement_str('theadas')}", color = config.Color.COLORLESS).set_footer(text = config.footer)
+
+    if u.stats["2048"]["games"] > 0: embed.add_field(name = '2048',  value = f"Games Played: {u.stats['2048']['games']}\n\nAchievements: {u.achievement_str('2048')}", inline = False)
+    if u.stats["bamboozle"]["wins"] + u.stats["bamboozle"]["losses"] > 0: embed.add_field(name = "BAMBOOZLE!", value = f"Skill Rating (SR): {math.floor(u.sr['bamboozle'])}\nGames Played: {u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses']}\nGames Won: {u.stats['bamboozle']['wins']} ({math.floor(u.stats['bamboozle']['wins'] / (u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses'])) * 100})% Winrate\nHolo Cards Owned: {bamboozle_holos}\n\nAchievements: {u.achievement_str('bamboozle')}", inline = False)
+    if u.stats["blackjack"]["wins"] + u.stats["blackjack"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['blackjack']['wins'] + u.stats['blackjack']['losses']}\n\nAchievements: {u.achievement_str('blackjack')}", inline = False)
+    if u.stats["whiteonblack"]["games"] > 0: embed.add_field(name = "White on Black",  value = f"Games Played: {u.stats['whiteonblack']['games']}\n\nExpansions Owned: {expansion_str}\nAchievements: {u.achievement_str('whiteonblack')}", inline = False)
+    if u.stats["checkers"]["wins"] + u.stats["checkers"]["losses"] > 0: embed.add_field(name = "Checkers",  value = f"Skill Rating (SR): {math.floor(u.sr['checkers'])}\nGames Played: {u.stats['checkers']['wins'] + u.stats['checkers']['losses']}\nGames Won: {u.stats['checkers']['wins']} ({math.floor(u.stats['checkers']['wins'] / (u.stats['checkers']['wins'] + u.stats['checkers']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('checkers')}", inline = False)
+    if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: embed.add_field(name = "Chess",  value = f"Skill Rating (SR): {math.floor(u.sr['chess'])}\nGames Played: {u.stats['chess']['wins'] + u.stats['chess']['losses']}\nGames Won: {u.stats['chess']['wins']} ({math.floor(u.stats['chess']['wins'] / (u.stats['chess']['wins'] + u.stats['chess']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('chess')}", inline = False)
+    if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: embed.add_field(name = "Gridlock",  value = f"Skill Rating (SR): {math.floor(u.sr['gridlock'])}\nGames Played: {u.stats['gridlock']['wins'] + u.stats['gridlock']['losses']}\nGames Won: {u.stats['gridlock']['wins']} ({math.floor(u.stats['gridlock']['wins'] / (u.stats['gridlock']['wins'] + u.stats['gridlock']['losses'])) * 100})% Winrate\nHolo Cards Owned: {gridlock_holos}\n**Packs:** {u.packs[gridlock.Pack.SMALL]} Small, {u.packs[gridlock.Pack.LARGE]} Large, {u.packs[gridlock.Pack.PREMIUM]} Premium\n\nAchievements: {u.achievement_str('gridlock')}", inline = False)
+    if u.stats["hangman"]["wins"] + u.stats["hangman"]["losses"] > 0: embed.add_field(name = "Hangman",  value = f"Games Played: {u.stats['hangman']['wins'] + u.stats['hangman']['losses']}\n\nGames Won: {u.stats['hangman']['wins']} ({math.floor(u.stats['hangman']['wins'] / (u.stats['hangman']['wins'] + u.stats['hangman']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('hangman')}", inline = False)
+    if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: embed.add_field(name = "trust",  value = f"Games Played: {u.stats['trust']['wins'] + u.stats['trust']['losses']}\nGames Won: {u.stats['trust']['wins']} ({math.floor(u.stats['trust']['wins'] / (u.stats['trust']['wins'] + u.stats['trust']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('trust')}", inline = False)
+    if u.stats["rps"]["wins"] + u.stats["rps"]["losses"] > 0: embed.add_field(name = "Rock Paper Scissors",  value = f"Games Played: {u.stats['rps']['wins'] + u.stats['rps']['losses']}\n\nGames Won: {u.stats['rps']['wins']} ({math.floor(u.stats['rps']['wins'] / (u.stats['rps']['wins'] + u.stats['rps']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('rps')}", inline = False)
+    if u.stats["slots"]["wins"] + u.stats["slots"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['slots']['wins'] + u.stats['slots']['losses']}\n\nAchievements: {u.achievement_str('slots')}", inline = False)
+    if u.stats["tictactoe"]["wins"] + u.stats["tictactoe"]["losses"] > 0: embed.add_field(name = "Tic Tac Toe",  value = f"Games Played: {u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses']}\n\nGames Won: {u.stats['tictactoe']['wins']} ({math.floor(u.stats['tictactoe']['wins'] / (u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('tictactoe')}", inline = False)
+
+    await ctx.interaction.followup.send(embed = embed, view = view)
+
 @bot.slash_command(name = "shop", description = "Turn your currency into shiny new toys!")
 async def shopCommand(ctx):
     await ctx.defer(ephemeral = True)
@@ -1208,7 +1367,7 @@ async def shopCommand(ctx):
     ])
 
     dominoSelect = discord.ui.Select(placeholder = "BUY WITH DOMINOES", row = 1, options = [
-        discord.SelectOption(label = "None Available", value = "none"),
+        discord.SelectOption(label = "Adena/Theadas Inside Jokes", value = "adena"),
         # discord.SelectOption(label = "", value = ""),
         # discord.SelectOption(label = "", value = ""),
         # discord.SelectOption(label = "", value = ""),
@@ -1337,6 +1496,11 @@ async def shopCommand(ctx):
     
     async def dominoesCallback(interaction):
         await interaction.response.defer(ephemeral = True)
+
+        if dominoSelect.values[0] == "adena" and user.dominoes >= 2:
+            user.dominoes -= 2
+            user.expansions += whiteonblack.Expansion.ADENA
+            user.save()
     
     async def tilesCallback(interaction):
         await interaction.response.defer(ephemeral = True)
@@ -1510,103 +1674,6 @@ async def supportCommand(ctx, show: discord.Option(bool, "Select false to keep t
     embed = discord.Embed(title = "Support", description = "Use `/help` to learn how to use my commands or `/info` to learn about my games. If you need further support, have suggestions, or want to report a bug, join our support server:", color = config.Color.COLORLESS).set_footer(text = config.footer).set_thumbnail(url = "https://cdn.discordapp.com/icons/1101982625003995270/a_ee9d87e8365151c5940a2de8aea51c06.webp")
     await ctx.interaction.followup.send(view = discord.ui.View(discord.ui.Button(label = "Join", url = "https://discord.gg/CfPYvDZ6rF", style = discord.ButtonStyle.success)), embed = embed)
 
-# TODO: user commands
-@bot.user_command(name="View Profile")
-async def profileUserCommand(ctx, user: discord.Member):
-    await ctx.defer(ephemeral = True)
-    if ctx.author.bot: return
-
-    if user is None: user = ctx.author
-    u: User = User(user.id)
-
-    moreSelect = discord.ui.Select(placeholder = "See More...", options = [
-        discord.SelectOption(label = "Titles", value = "titles"),
-        discord.SelectOption(label = "Backgrounds", value = "backgrounds"),
-        discord.SelectOption(label = "Holo Cards", value = "holos"),
-        discord.SelectOption(label = "WOB Packs", value = "whiteonblack"),
-        discord.SelectOption(label = "Trust Variants", value = "trust"),
-        discord.SelectOption(label = "Achievements", value = "achievements"),
-        discord.SelectOption(label = "Medals", value = "medals")
-    ])
-
-    changeSelect = discord.ui.Select(placeholder = "Change Your...")
-    if len(u.titles) > 1: changeSelect.add_option(label = "Title", value = "title")
-    if len(u.backgrounds) > 1: changeSelect.add_option(label = "Profile Background", value = "background")
-
-    async def moreCallback(interaction):
-        await interaction.response.defer(ephemeral = True)
-
-        match moreSelect.values[0]:
-            case "titles": pass
-            case "backgrounds": pass
-            case "holos": pass
-            case "whiteonblack": pass
-            case "trust": pass
-            case _: pass
-
-    async def changeCallback(interaction):
-        await interaction.response.defer(ephemeral = True)
-        
-        match changeSelect.values[0]:
-            case "title": pass
-            case "background": pass
-            case _: pass
-
-    moreSelect.callback   = moreCallback
-    changeSelect.callback = changeCallback
-
-    view = discord.ui.View(moreSelect)
-    if user == ctx.author and len(changeSelect.options) > 0: view.add_item(changeSelect)
-
-    xp_str = ""
-    titles_str = ""
-    guides_str = ""
-    variant_str = ""
-    expansion_str = ""
-    gridlock_holos = 0
-    bamboozle_holos = 0
-
-    for i in range(10): xp_str += "▰" if i < round((u.xp / u.get_next_level()) * 10) else "▱"
-    for i in u.variants: variant_str += f", {i.value}"
-    for i in u.expansions: expansion_str += f"{i.value}, "
-    for i in u.card_holos: gridlock_holos += 1 if type(i) == gridlock.Game.Card else 0
-    for i in u.card_holos: bamboozle_holos += 1 if type(i) == bamboozle.Game.Role else 0
-
-    for i in u.titles:  
-        if u.titles.index(i) <= 4: titles_str += f", \"{i}\""
-        else:
-            titles_str += f", and **{len(u.titles) - u.titles.index(i)}** more"
-            break
-    
-    for i in u.guides:  
-        if u.guides.index(i) <= 4: guides_str += f", {i}"
-        else:
-            guides_str += f", and **{len(u.guides) - u.guides.index(i)}** more"
-            break
-
-    if len(variant_str) > 0: variant_str = variant_str[:-2]
-    else: variant_str = "None"
-
-    if len(expansion_str) > 0: expansion_str = expansion_str[:-2]
-    else: expansion_str = "None"
-
-    embed = discord.Embed(title = user.name + (" ⭐" if u.subscribed_since else " ") + f" (player since <t:{u.join}:D>)", description = f"**Tickets:** {u.tickets}\n**Tokens:** {u.tokens}\n**Chips:** {u.chips}\n\n**Dice:** {u.dice}\n**Dominoes:** {u.dominoes}\n**Tiles:** {u.tiles}\n**Chits:** {u.chits}\n\n**Endorsements:** {u.endorsements}\n**Level:** {u.get_level()} | **XP:** {u.xp} `{xp_str}`\n**Turing Progress:** {len(u.turing)} / 6\n\n**Achievements:** {u.achievement_str('theadas')}", color = config.Color.COLORLESS).set_footer(text = config.footer)
-
-    if u.stats["2048"]["games"] > 0: embed.add_field(name = '2048',  value = f"Games Played: {u.stats['2048']['games']}\n\nAchievements: {u.achievement_str('2048')}", inline = False)
-    if u.stats["bamboozle"]["wins"] + u.stats["bamboozle"]["losses"] > 0: embed.add_field(name = "BAMBOOZLE!", value = f"Skill Rating (SR): {math.floor(u.sr['bamboozle'])}\nGames Played: {u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses']}\nGames Won: {u.stats['bamboozle']['wins']} ({math.floor(u.stats['bamboozle']['wins'] / (u.stats['bamboozle']['wins'] + u.stats['bamboozle']['losses'])) * 100})% Winrate\nHolo Cards Owned: {bamboozle_holos}\n\nAchievements: {u.achievement_str('bamboozle')}", inline = False)
-    if u.stats["blackjack"]["wins"] + u.stats["blackjack"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['blackjack']['wins'] + u.stats['blackjack']['losses']}\n\nAchievements: {u.achievement_str('blackjack')}", inline = False)
-    if u.stats["whiteonblack"]["games"] > 0: embed.add_field(name = "White on Black",  value = f"Games Played: {u.stats['whiteonblack']['games']}\n\nExpansions Owned: {expansion_str}\nAchievements: {u.achievement_str('whiteonblack')}", inline = False)
-    if u.stats["checkers"]["wins"] + u.stats["checkers"]["losses"] > 0: embed.add_field(name = "Checkers",  value = f"Skill Rating (SR): {math.floor(u.sr['checkers'])}\nGames Played: {u.stats['checkers']['wins'] + u.stats['checkers']['losses']}\nGames Won: {u.stats['checkers']['wins']} ({math.floor(u.stats['checkers']['wins'] / (u.stats['checkers']['wins'] + u.stats['checkers']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('checkers')}", inline = False)
-    if u.stats["chess"]["wins"] + u.stats["chess"]["losses"] > 0: embed.add_field(name = "Chess",  value = f"Skill Rating (SR): {math.floor(u.sr['chess'])}\nGames Played: {u.stats['chess']['wins'] + u.stats['chess']['losses']}\nGames Won: {u.stats['chess']['wins']} ({math.floor(u.stats['chess']['wins'] / (u.stats['chess']['wins'] + u.stats['chess']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('chess')}", inline = False)
-    if u.stats["gridlock"]["wins"] + u.stats["gridlock"]["losses"] > 0: embed.add_field(name = "Gridlock",  value = f"Skill Rating (SR): {math.floor(u.sr['gridlock'])}\nGames Played: {u.stats['gridlock']['wins'] + u.stats['gridlock']['losses']}\nGames Won: {u.stats['gridlock']['wins']} ({math.floor(u.stats['gridlock']['wins'] / (u.stats['gridlock']['wins'] + u.stats['gridlock']['losses'])) * 100})% Winrate\nHolo Cards Owned: {gridlock_holos}\n**Packs:** {u.packs[gridlock.Pack.SMALL]} Small, {u.packs[gridlock.Pack.LARGE]} Large, {u.packs[gridlock.Pack.PREMIUM]} Premium\n\nAchievements: {u.achievement_str('gridlock')}", inline = False)
-    if u.stats["hangman"]["wins"] + u.stats["hangman"]["losses"] > 0: embed.add_field(name = "Hangman",  value = f"Games Played: {u.stats['hangman']['wins'] + u.stats['hangman']['losses']}\n\nGames Won: {u.stats['hangman']['wins']} ({math.floor(u.stats['hangman']['wins'] / (u.stats['hangman']['wins'] + u.stats['hangman']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('hangman')}", inline = False)
-    if u.stats["trust"]["wins"] + u.stats["trust"]["losses"] > 0: embed.add_field(name = "trust",  value = f"Games Played: {u.stats['trust']['wins'] + u.stats['trust']['losses']}\nGames Won: {u.stats['trust']['wins']} ({math.floor(u.stats['trust']['wins'] / (u.stats['trust']['wins'] + u.stats['trust']['losses'])) * 100})% Winrate\n\nVariants Owned: {variant_str}\nAchievements: {u.achievement_str('trust')}", inline = False)
-    if u.stats["rps"]["wins"] + u.stats["rps"]["losses"] > 0: embed.add_field(name = "Rock Paper Scissors",  value = f"Games Played: {u.stats['rps']['wins'] + u.stats['rps']['losses']}\n\nGames Won: {u.stats['rps']['wins']} ({math.floor(u.stats['rps']['wins'] / (u.stats['rps']['wins'] + u.stats['rps']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('rps')}", inline = False)
-    if u.stats["slots"]["wins"] + u.stats["slots"]["losses"] > 0: embed.add_field(name = "Blackjack",  value = f"Games Played: {u.stats['slots']['wins'] + u.stats['slots']['losses']}\n\nAchievements: {u.achievement_str('slots')}", inline = False)
-    if u.stats["tictactoe"]["wins"] + u.stats["tictactoe"]["losses"] > 0: embed.add_field(name = "Tic Tac Toe",  value = f"Games Played: {u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses']}\n\nGames Won: {u.stats['tictactoe']['wins']} ({math.floor(u.stats['tictactoe']['wins'] / (u.stats['tictactoe']['wins'] + u.stats['tictactoe']['losses'])) * 100})% Winrate\n\nAchievements: {u.achievement_str('tictactoe')}", inline = False)
-
-    await ctx.interaction.followup.send(embed = embed, view = view)
-
 # @bot.user_command(name="Challenge to a Game")
 # async def profileUserCommand(ctx, user: discord.Member):
 #     await ctx.defer(ephemeral = True)
@@ -1619,78 +1686,134 @@ async def bamboozlePlayCommand(ctx):
     await ctx.defer(ephemeral = False)
     if ctx.author.bot: return
 
-    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
-    # await ctx.defer(ephemeral = False)
-    # if ctx.author.bot: return
-
-    # user = User(ctx.author.id)
-    # if user.game() != None:
-    #     g = user.game()
-    #     e, v, f = g.render()
-    #     g.message = await ctx.interaction.followup.send(embed = e, view = v, file = f)
+    user = User(ctx.author.id)
+    if user.game() != None:
+        g = user.game()
+        e, v, f = g.render()
+        g.message = await ctx.interaction.followup.send(embed = e, view = v, file = f)
     
-    # else:
-    #     joinButton   = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "JOIN")
-    #     leaveButton  = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "LEAVE")
-    #     startButton  = discord.ui.Button(style = discord.ButtonStyle.success,   label = "START", disabled = True)
+    else:
+        joinButton   = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "JOIN")
+        leaveButton  = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "LEAVE")
+        startButton  = discord.ui.Button(style = discord.ButtonStyle.success,   label = "START", disabled = True)
 
-    #     players = [ctx.author]
-    #     message = None
-    #     embed = discord.Embed(title = "Play BAMBOOZLE!", description = f"{ctx.author.mention} is starting a game. Press `JOIN` to join the game or `LEAVE` to leave it. Use `/info trust` to learn the basics of the game. When there are 2-8 players in the game, {ctx.author.mention} can use `START` to start the game. They can also `CANCEL` the game by deleting this message.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.BAMBOOZLE).set_footer(text = config.footer)
-    #     view = discord.ui.View(joinButton, leaveButton, startButton, timeout = None)
+        players: List[discord.User] = [ctx.author]
+        message = None
+        embed = discord.Embed(title = "Play BAMBOOZLE!", description = f"{ctx.author.mention} is starting a game. Press `JOIN` to join the game or `LEAVE` to leave it. Use `/info trust` to learn the basics of the game. When there are 2-8 players in the game, {ctx.author.mention} can use `START` to start the game. They can also `CANCEL` the game by deleting this message.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.BAMBOOZLE).set_footer(text = config.footer)
+        view = discord.ui.View(joinButton, leaveButton, startButton, timeout = None)
 
-    #     async def joinCallback(interaction):
-    #         await interaction.response.defer(ephemeral = True)
-    #         if interaction.user in players or User(interaction.user.id).game() != None:
-    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
-    #             return
+        async def joinCallback(interaction):
+            await interaction.response.defer(ephemeral = True)
+            if interaction.user in players or User(interaction.user.id).game() != None:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
 
-    #         if len(players) >= 8:
-    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
-    #             return
+            if len(players) >= 25:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
 
-    #         players.append(interaction.user)
-    #         User(interaction.user.id)
-    #         embed.description += f"\n- {interaction.user.mention}"
-    #         startButton.disabled = True if 2 <= len(players) >= 8 else False
+            try:
+                await interaction.user.send("You have joined the game!")
 
-    #         await interaction.edit_original_response(embed = embed, view = view)
+                players.append(interaction.user)
+                User(interaction.user.id)
+                embed.description += f"\n- {interaction.user.mention}"
+                startButton.disabled = True if 5 <= len(players) >= 25 else False
 
-    #     async def leaveCallback(interaction):
-    #         await interaction.response.defer(ephemeral = True)
-    #         if interaction.user.id == players[0]:
-    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
-    #             return
+                await interaction.edit_original_response(embed = embed, view = view)
+
+            except: await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+
+        async def leaveCallback(interaction):
+            await interaction.response.defer(ephemeral = True)
+            if interaction.user.id == players[0]:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
             
-    #         if interaction.user.id in players and User(interaction.user.id).game():
-    #             players.remove(interaction.user.id)
-    #             embed.description -= f"\n- {interaction.user.mention}"
-    #             startButton.disabled = True if 2 <= len(players) >= 8 else False
+            if interaction.user.id in players and User(interaction.user.id).game():
+                players.remove(interaction.user.id)
+                embed.description -= f"\n- {interaction.user.mention}"
+                startButton.disabled = True if 5 <= len(players) >= 25 else False
 
-    #             await interaction.edit_original_response(embed = embed, view = view)
+                await interaction.edit_original_response(embed = embed, view = view)
 
-    #         else:
-    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
-    #             return
+            else:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
 
-    #     async def startCallback(interaction):
-    #         await interaction.response.defer(ephemeral = True)
-    #         if interaction.user == players[0]:
-    #             g = bamboozle.Game([bamboozle.Player(i.id, i.name) for i in players])
+        async def startCallback(interaction):
+            await interaction.response.defer(ephemeral = True)
+            if interaction.user == players[0]:
+                g = bamboozle.Game([bamboozle.Player(i.id, i.name) for i in players])
 
-    #             await message.delete()
-    #             e, v = g.render()
-    #             g.message = await ctx.interaction.followup.send(embed = e, view = v)
+                step_count = (len(g.players) - 4) // 3
 
-    #         else:
-    #             await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
-    #             return
+                w = step_count + 1
+                s = 2 * step_count
+                sw = step_count
+                sa = sw - 1
 
-    #     joinButton.callback   = joinCallback
-    #     leaveButton.callback  = leaveCallback
-    #     startButton.callback  = startCallback
+                for i in range(w): random.choice(g.players).wolf = True
 
-    #     message = await ctx.interaction.followup.send(embed = embed, view = view)
+                if sa > 0:
+                    for i in range(sa):
+                        random.choice(g.players).self_aligned = True
+
+                wolves = g.wolves()
+                villagers = g.villagers()
+                self_aligned = g.self_aligned()
+
+                for i in wolves: i.role    = bamboozle.Role.WEREWOLF
+                for i in villagers: i.role = bamboozle.Role.VILLAGER
+
+                for i in range(s): random.choice(villagers).role = random.choice([bamboozle.Role.DETECTIVE, bamboozle.Role.GAURD, bamboozle.Role.SCOUT, bamboozle.Role.MAGICIAN, bamboozle.Role.SEER, bamboozle.Role.WITCH_DOCTOR])
+                for i in range(sw): random.choice(wolves).role   = random.choice([bamboozle.Role.WEREWOLF_DETECTIVE, bamboozle.Role.TAMPERING_WOLF, bamboozle.Role.WEREWOLF_ELECTRICIAN, bamboozle.Role.WEREWOLF_SCOUT])
+
+                for i in self_aligned: i.role = random.choice([bamboozle.Role.TANNER, bamboozle.Role.SERIAL_KILLER, bamboozle.Role.GAURDIAN_ANGEL])
+
+                g.update()
+                angel = None
+
+                for i in g.players:
+                    if i.role == bamboozle.Role.GAURDIAN_ANGEL: angel = i
+                    if i.role in [bamboozle.Role.SERIAL_KILLER, bamboozle.Role.TANNER, bamboozle.Role.PLAGUE_DOCTOR, bamboozle.Role.GAURDIAN_ANGEL]: g.losers.append(i)
+                
+                if angel:
+                    e = discord.Embed()
+                    v = discord.ui.View(timeout = None)
+                    s = discord.ui.Select(placeholder = "👼 PROTECT")
+
+                    e.title = "You are the guardian angel! You must choose a player to protect before the game can start."
+                    e.description = "Use `👼 PROTECT` to pick your Protected"
+                    e.color = config.Color.BAMBOOZLE
+                    e.set_footer(text = config.footer)
+
+                    async def c(interaction):
+                        print("angel picked")
+
+                    s.callback = c
+                    v.add_item(s)
+
+                    u = await bot.fetch_user(angel.id)
+                    await u.send(embed = e, view = v)
+
+                for i in g.players:
+                    user = bot.fetch_user(i.id)
+                    user.send(embed = discord.Embed(title = f"You are the {i.role.title}", color = config.Color.BAMBOOZLE).set_image(url = i.role.image).set_footer(text = config.footer))
+
+                await message.delete()
+                e, v = g.render()
+                g.message = await ctx.interaction.followup.send(embed = e, view = v)
+
+            else:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
+
+        joinButton.callback   = joinCallback
+        leaveButton.callback  = leaveCallback
+        startButton.callback  = startCallback
+
+        message = await ctx.interaction.followup.send(embed = embed, view = view)
 
 @play.command(name = "blackjack", description = "Draw cards from the deck, trying to be closest to 21 without going over.")
 async def blackjackPlayCommand(ctx, bet: discord.Option(int, "Bet an amount between 2 and 500 chips.")):
@@ -1706,10 +1829,12 @@ async def blackjackPlayCommand(ctx, bet: discord.Option(int, "Bet an amount betw
         g.message = await ctx.interaction.followup.send(embed = e, view = v)
     
 @play.command(name = "whiteonblack", description = "Find the funniest response to the Czar\'s prompts!")
-# @discord.is_nsfw()
 async def whiteonblackPlayCommand(ctx, packs: discord.Option(str, "Name packs to use, separated by commas") = None):
     await ctx.defer()
     if ctx.author.bot: return
+    if not ctx.channel.is_nsfw():
+        await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NSFW.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+        return
 
     expansions: List[whiteonblack.Expansion] = []
     user = User(ctx.author.id)
@@ -1718,7 +1843,7 @@ async def whiteonblackPlayCommand(ctx, packs: discord.Option(str, "Name packs to
     else:
         for p in packs.lower().split(", "):
             for e in whiteonblack.Expansion:
-                if not e in user.expansions: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = f"❌ You do not own {e.value}! You can purchase it with /shop.", color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                if not e in user.expansions and not (e in User(ctx.guild.owner.id).expansions and Guild(ctx.guild.id).sharing): await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = f"❌ You do not own {e.value}! You can purchase it with /shop.", color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
                 elif p == e.value: expansions += e
 
     embed = discord.Embed(title = "Play White on Black!", description = f"{ctx.author.mention} is starting a game. Click `JOIN` to join the game or `LEAVE` to leave it. Use `/info whiteonblack` to learn the basics of the game. When there are 2-10 players in the game, {ctx.author.mention} can use `START` to start the game. They can also cancel the game by deleting this message.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.COLORLESS).set_footer(text = config.footer)
@@ -1812,6 +1937,80 @@ async def gridlockPlayCommand(ctx):
     if ctx.author.bot: return
 
     await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
+
+@play.command(name = "groupicide", description = "Take turns firing your gun until only one person is left alive!")
+async def gridlockPlayCommand(ctx):
+    await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
+
+    user = User(ctx.author.id)
+    if user.game() != None:
+        g = user.game()
+        e, v, f = g.render()
+        g.message = await ctx.interaction.followup.send(embed = e, view = v, file = f)
+    
+    else:
+        joinButton   = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "JOIN")
+        leaveButton  = discord.ui.Button(style = discord.ButtonStyle.secondary, label = "LEAVE")
+        startButton  = discord.ui.Button(style = discord.ButtonStyle.success,   label = "START", disabled = True)
+
+        players = [ctx.author]
+        message = None
+        embed = discord.Embed(title = "Play Trust!", description = f"{ctx.author.mention} is starting a game. Press `JOIN` to join the game or `LEAVE` to leave it. Use `/info trust` to learn the basics of the game. When there are 2-8 players in the game, {ctx.author.mention} can use `START` to start the game. They can also `CANCEL` the game at any time.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.HELLARED).set_footer(text = config.footer)
+        view = discord.ui.View(joinButton, leaveButton, startButton, timeout = None)
+
+        async def joinCallback(interaction):
+            await interaction.response.defer(ephemeral = True)
+            if interaction.user in players or User(interaction.user.id).game() != None:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
+
+            if len(players) >= 8:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
+
+            players.append(interaction.user)
+            User(interaction.user.id)
+            embed.description += f"\n- {interaction.user.mention}"
+            startButton.disabled = True if 2 <= len(players) >= 8 else False
+
+            await interaction.edit_original_response(embed = embed, view = view)
+
+        async def leaveCallback(interaction):
+            await interaction.response.defer(ephemeral = True)
+            if interaction.user.id == players[0]:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
+            
+            if interaction.user.id in players and User(interaction.user.id).game():
+                players.remove(interaction.user.id)
+                embed.description -= f"\n- {interaction.user.mention}"
+                startButton.disabled = True if 2 <= len(players) >= 8 else False
+
+                await interaction.edit_original_response(embed = embed, view = view)
+
+            else:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IN_GAME.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
+
+        async def startCallback(interaction):
+            await interaction.response.defer(ephemeral = True)
+            if interaction.user == players[0]:
+                g = groupicide.Game([groupicide.Player(i.id, i.name) for i in players])
+
+                await message.delete()
+                e, v = g.render()
+                g.message = await ctx.interaction.followup.send(embed = e, view = v)
+
+            else:
+                await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                return
+
+        joinButton.callback   = joinCallback
+        leaveButton.callback  = leaveCallback
+        startButton.callback  = startCallback
+
+        message = await ctx.interaction.followup.send(embed = embed, view = view)
 
 @play.command(name = "hangman", description = "Try and guess a word before you get hanged!")
 async def hangmanPlayCommand(ctx):
@@ -1911,29 +2110,20 @@ async def quickdrawPlayCommand(ctx, user: discord.Option(discord.Member, "Challe
     await ctx.defer(ephemeral = False)
     if ctx.author.bot: return
 
-    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
-    # await ctx.defer(ephemeral = False)
-    # if ctx.author.bot: return
+    g = quickdraw.Game([ctx.author, user])
+    e, v = g.render()
 
-    # acceptButton = discord.ui.Button(label = "ACCEPT CHALLENGE", style = discord.ButtonStyle.secondary)
-    # message: discord.Message = None
+    g.message = await ctx.interaction.followup.send(embed = e, view = v, ephemeral = False)
 
-    # async def acceptCallback(interaction):
-    #     await interaction.response.defer(ephemeral = False)
-    #     if interaction.user.id != user.id: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.PERMISSION.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
-    #     else:
-    #         await message.edit(embed = discord.Embed(title = f"{user.name} has accepted {ctx.author.name}'s challenge to a Quickdraw!", description = "A countdown has been started. After the countdown, a 💥 will appear, and the first player to click it wins!", color = config.Color.COLORLESS).set_footer(text = config.footer), view = discord.ui.View())
-    #         await asyncio.sleep(random.randint(2, 15))
-    #         await message.add_reaction("💥")
+@play.command(name = "priceisurban", description = "Guess how many likes and dislikes the entry has!", guild_ids = [537839766381658134])
+async def priceisurbanCommand(ctx, word: discord.Option(str, "Pick a word to guess on or leave blank for random.") = None):
+    await ctx.defer(ephemeral = False)
+    if ctx.author.bot: return
 
-    #         try: _, u, = await bot.wait_for("reaction_add", check = lambda r, u: u in [ctx.author, user] and str(r.emoji) == "💥", timeout = 30)
-    #         except asyncio.TimeoutError: await message.edit(embed = discord.Embed(title = f"☁️ Huh? No one drew in time.", color = config.Color.COLORLESS).set_footer(text = config.footer))
-    #         else: 
-    #             await message.edit(embed = discord.Embed(title = f"💥 Bang! {u.name} draws first!", color = config.Color.COLORLESS).set_footer(text = config.footer))
-    #             await message.clear_reactions()
+    g = priceisurban.Game(ctx.author, word)
+    e, v = g.render()
 
-    # acceptButton.callback = acceptCallback
-    # message = await ctx.interaction.followup.send(embed = discord.Embed(title = f"{ctx.author.name} has challenged {user.name} to a Quickdraw!", description = "When they accept the challenge, a countdown will start. After the countdown, a 💥 will appear, and the first player to click it wins!", color = config.Color.COLORLESS).set_footer(text = config.footer), view = discord.ui.View(acceptButton), ephemeral = True)
+    g.message = await ctx.interaction.followup.send(embed = e, view = v, ephemeral = False)
 
 @play.command(name = "rockpaperscissors", description = "Rock beats scissors, paper beats rock, and scissors beat paper.")
 async def rockpaperscissorsPlayCommand(ctx):
@@ -1943,18 +2133,37 @@ async def rockpaperscissorsPlayCommand(ctx):
     await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
 
 @play.command(name = "slots", description = "Get 3 in a row to win big!")
-async def slotsPlayCommand(ctx):
-    await ctx.defer(ephemeral = False)
+async def slotsPlayCommand(ctx, bet: discord.Option(int, "Bet an amount between 2 and 500 chips."), payline: discord.Option(int, "Which line should pay out? (1-3)") = 2):
+    await ctx.defer(ephemeral = True)
     if ctx.author.bot: return
 
-    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
+    user = User(ctx.author.id)
+    if user.chips < bet: await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_ENOUGH.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+    else:
+        g = slots.Game(user, bet, payline)
+        e, v = g.render()
+
+        g.message = await ctx.interaction.followup.send(embed = e, view = v)
 
 @play.command(name = "tictactoe", description = "Get 3 in a row before your opponent can.")
-async def tictactoePlayCommand(ctx):
+async def tictactoePlayCommand(ctx, user: discord.Option(discord.Member, "Challenge this user to Tic Tac Toe!")):
     await ctx.defer(ephemeral = False)
     if ctx.author.bot: return
 
-    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NOT_IMPLEMENTED.value, color = config.Color.ERROR).set_footer(text = config.footer, ephemeral = True))
+    g = tictactoe.Game([User(ctx.author.id), User(user.id)])
+    c, v = g.render()
+    g.message = await ctx.interaction.followup.send(content = c, view = v)
+
+@bot.user_command(name="Challenge to Tic Tac Toe")
+async def profileUserCommand(ctx, user: discord.Member):
+    await ctx.defer(ephemeral = False)
+    if ctx.author.bot: 
+        await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.GENERIC.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+        return
+    
+    g = tictactoe.Game([User(ctx.author.id), User(user.id)])
+    c, v = g.render()
+    g.message = await ctx.interaction.followup.send(content = c, view = v)
 
 @play.command(name = "twentyfortyeight", description = "Merge tiles until you run out of space.")
 async def twentyfortyeightPlayCommand(ctx):

@@ -1,5 +1,5 @@
 # Theadas Bot is a Discord bot allowing users to play various games with each other.
-# Copyright © 2024  Jester (@cowsauce)
+# Copyright © 2024 Jester (@cowsauce)
 
 # This file is part of Theadas Bot.
 
@@ -14,20 +14,19 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from collections import Counter
-import math
 import config
-from theadas import User
+from theadas import User, bot
 
 import discord
 
-import copy, os, pickle, random
+import copy, os, pickle, random, math
+from collections import Counter
 from enum import Enum
 from typing import List
 
-name = "BAMBOOZLE!"
+name = "BAMBOOZLE! [beta]"
 
 description = '''
     This game is not yet implemented
@@ -43,6 +42,58 @@ class Player:
 
         self.dead: bool = False
         self.revealed: bool = False
+
+class ActionButtons:
+    async def passCallback(interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral = True)
+
+        user = User(interaction.user.id)
+        game = user.game()
+        player = None
+
+        for i in game.players:
+            if i.id == user.id: player = i
+
+        player.night_acted = True
+        game.save()
+
+        await interaction.followup.send(embed = discord.Embed(title = "You have forfeited your night action. You will not do it this night.", color = config.Color.SUCCESS).set_footer(text = config.footer))
+        
+    async def investigateCallback(interaction: discord.Interaction): await interaction.response.defer()
+    async def tamperCallback(interaction: discord.Interaction): await interaction.response.defer()
+    async def lightsCallback(interaction: discord.Interaction): await interaction.response.defer()
+    async def gaurdCallback(interaction: discord.Interaction): await interaction.response.defer()
+    async def swapCallback(interaction: discord.Interaction): await interaction.response.defer()
+    async def seeCallback(interaction: discord.Interaction): await interaction.response.defer()
+    async def reviveCallback(interaction: discord.Interaction): await interaction.response.defer()
+    async def killCallback(interaction: discord.Interaction): await interaction.response.defer()
+
+    passButton = discord.ui.Button()
+    passButton.callback = passCallback
+
+    investigateButton = discord.ui.Button()
+    investigateButton.callback = investigateCallback
+
+    tamperButton = discord.ui.Button()
+    tamperButton.callback = tamperCallback
+
+    lightsButton = discord.ui.Button()
+    lightsButton.callback = lightsCallback
+
+    gaurdButton = discord.ui.Button()
+    gaurdButton.callback = gaurdCallback
+
+    swapButton = discord.ui.Button()
+    swapButton.callback = swapCallback
+
+    seeButton = discord.ui.Button()
+    seeButton.callback = seeCallback
+
+    reviveButton = discord.ui.Button()
+    reviveButton.callback = reviveCallback
+
+    killButton = discord.ui.Button()
+    killButton.callback = killCallback
 
 class Role(Enum):
     WEREWOLF             = ("Werewolf", "https://media.istockphoto.com/id/1153852267/vector/playing-card-joker-yellow-red-blue-black.jpg?s=612x612&w=0&k=20&c=Hgz0isA2JMM-q6zOSND372GmFTFzP6HZKYD_tVWK5rk=")
@@ -122,14 +173,39 @@ class Game():
             actionButton = discord.ui.Button(emoji = "💥", label = "TAKE NIGHT ACTION", disabled = None in [i for i in self.wolves() if self.kill_votes[i.id]])
             killButton   = discord.ui.Button(emoji = "🐺", label = "KILL")
 
-            async def actionCallback(interaction):
+            async def actionCallback(interaction: discord.Interaction):
                 await interaction.response.defer(ephemeral = True)
-                await interaction.response.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NO_ACTION, color = config.Color.ERROR).set_footer(text = config.footer))
+                player: Player = None
+                for i in self.players:
+                    if i.id == interaction.user.id: player = i
+                
+                match player.role:
+                    case Role.WEREWOLF_DETECTIVE: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can investigate 1 person each night to learn their role. Use the `🔎 INVESTIGATE` button to investigate someone. Use `PASS` to pass on investigating someone tonight.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.investigateButton, ActionButtons.passButton))
+                    case Role.TAMPERING_WOLF: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can make someone's role card appear changed once per night. Use the `♻️ TAMPER` buttton to swap someone's role card.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.tamperButton, ActionButtons.passButton))
+                    case Role.WEREWOLF_SCOUT: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You have no night action but will be sent a list of people who leave their house each night.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image))
+                    case Role.DETECTIVE: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can visit and investigate 1 person each night to learn their role. Use the `🔎 INVESTIGATE` button to investigate someone.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.investigateButton, ActionButtons.passButton))
+                    case Role.GAURD: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can visit and guard 1 person each night to prevent anyone else from visiting them. Use the `🛡️ GUARD` button to guard someone.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.gaurdButton, ActionButtons.passButton))
+                    case Role.SCOUT: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You have no night action but will be sent a list of people who leave their house each night.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image))
+                    case Role.MAGICIAN: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can visit and swap roles with 1 person each night. Use the `🪄 SWAP` button to swap with someone.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.swapButton, ActionButtons.passButton))
+                    case Role.SEER: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can reveal someone's alignment every night without visiting them. Use the `🔮 SEE` button to see someone's alignment.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.seeButton, ActionButtons.passButton))
+                    case Role.WITCH_DOCTOR: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can revive one dead player per game. Use the `⤴️ REVIVE` btton to revive someone.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.reviveButton, ActionButtons.passButton))
+                    case Role.SERIAL_KILLER: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can visit and kill one person per night. Use the `🗡️ KILL` btton to kill someone.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.killButton, ActionButtons.passButton))
+                    case _: await interaction.response.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NO_ACTION, color = config.Color.ERROR).set_footer(text = config.footer))
 
             async def killCallback(interaction):
                 await interaction.response.defer(ephemeral = True)
                 message: discord.Message = None
                 select = discord.ui.Select(placeholder = "PLAYERS", options = [discord.SelectOption(label = i.name, value = i.id) for i in self.players] + "abstain")
+
+                for i in self.players:
+                    if i.id == interaction.user.id:
+                        p = i
+                        if p.dead:
+                            await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.DEAD.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                            return
+                        elif i.alignment != 1:
+                            await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.CANT_KILL.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                            return
 
                 async def selectCallback(interaction):
                     await interaction.response.defer(ephemeral = False)
@@ -429,13 +505,23 @@ class Game():
 
             async def actionCallback(interaction):
                 await interaction.response.defer(ephemeral = True)
-                await interaction.response.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.NO_ACTION, color = config.Color.ERROR).set_footer(text = config.footer))
+                player: Player = None
+                for i in self.players:
+                    if i.id == interaction.user.id: player = i
+
+                match player.role:
+                    case Role.WITCH_DOCTOR: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can revive one dead player per game. Use the `⤴️ REVIVE` btton to revive someone.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.reviveButton, ActionButtons.passButton))
+                    case Role.WEREWOLF_ELECTRICIAN: await interaction.response.followup.send(embed = discord.Embed(title = f"You are the {player.role}", description = "You can change day to night once per game. Use the `🌙 LIGHTS` button to kill the lights.", color = config.Color.ERROR).set_footer(text = config.footer).set_image(url = player.role.image), view = discord.ui.View(ActionButtons.lightsButton, ActionButtons.passButton))
 
             async def voteCallback(interaction):
                 await interaction.response.defer(ephemeral = True)
                 message: discord.Message = None
                 select = discord.ui.Select(placeholder = "PLAYERS", options = [discord.SelectOption(label = i.name, value = i.id) for i in self.players] + "abstain")
-
+                
+                for i in self.players:
+                    if i.id == interaction.user.id and i.dead:
+                        await interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = config.Error.DEAD.value, color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                        return
                 async def selectCallback(interaction):
                     await interaction.response.defer(ephemeral = False)
                     voter: Player = None

@@ -1,5 +1,5 @@
 # Theadas Bot is a Discord bot allowing users to play various games with each other.
-# Copyright © 2024  Jester (@cowsauce)
+# Copyright © 2024 Jester (@cowsauce)
 
 # This file is part of Theadas Bot.
 
@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from typing import List
 import config
@@ -31,58 +31,6 @@ name = "Trust"
 description = '''
     someone remind me to write this
 '''
-
-class Variant(Enum):
-    BASE = "Trust (default)"
-
-class Card():
-    def __init__(self, name, description, image):
-        self.name = name
-        self.description = description
-        self.image = image
-    
-    def __str__(self):
-        return f"{self.name}"
-    
-    def on_draw(self, player, game):
-        return
-    
-    @classmethod
-    def load(self, name):
-        if os.path.exists(f"data/trust_cards/{name}.py"):
-            spec = importlib.util.spec_from_file_location(name, f"data/trust_cards/{name}.py")
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-
-        return getattr(module, name)
-    
-class Set(Enum):
-    BROWN = "Envy"
-    LIGHT_BLUE = "Sloth"
-    PURPLE = "Gluttony"
-    ORANGE = "Lust"
-    RED = "Greed"
-    YELLOW = "Wrath"
-    GREEN = "Pride"
-    DARK_BLUE = "Heaven"
-
-    RAILROADS = "Vehicles"
-    PORTALS  = "Portals"
-    SPECIAL  = ""
-
-class Location():
-    def __init__(self, name, image, cost, rent, mortgage, set, coords):
-        self.name = name
-        self.image = image
-        self.cost = cost
-        self.rent = rent
-        self.mortgage = mortgage
-        self.set = set
-        self.coords = coords
-
-        self.houses = 0
-        self.owner = None
-        self.mortgaged = False
 
 class Player:
     def __init__(self, id, name):
@@ -148,20 +96,21 @@ class Player:
         # chest
         if self.position in [2, 17, 33]:
             chest = [i for i in os.listdir("data/trust_cards") if i.startswith("chest")]
-            card = Card.load(random.choice(chest).split(".")[0])()
+            card = Card.load(random.choice(chest).split(".")[0])(game.variant)
             card.on_draw(game.active, game)
             game.card = card
 
         # chance
         if self.position in [7, 22, 35]:
             chance = [i for i in os.listdir("data/trust_cards") if i.startswith("chance")]
-            card = Card.load(random.choice(chance).split(".")[0])()
+            card = Card.load(random.choice(chance).split(".")[0])(game.variant)
             card.on_draw(game.active, game)
             game.card = card
         
         game.save()
 
     class Piece(Enum):
+        # BASE
         THIMBLE = ("Thimble", "assets/thimble.png")
         TOPHAT = ("Top Hat", "assets/tophat.png")
         IRON = ("Iron", "assets/iron.png")
@@ -170,6 +119,16 @@ class Player:
         TERRIER = ("Scottish Terrier", "assets/scottish_terrier.png")
         RACECAR = ("Racecar", "assets/racecar.png")
         BATTLESHIP = ("Battleship", "assets/battleship.png")
+
+        # HELLOPOLY
+        BLITZO = ("Blitzo", "assets/blitzo.png")
+        VOX = ("Vox", "assets/vox.png")
+        ANGEL_DUST = ("Angel Dust", "assets/angel_dust.png")
+        ALASTOR = ("Alastor", "assets/piece.png")
+        LOONA = ("Loona", "assets/loona.png")
+        FIZZAROLLI = ("Fizzarolli", "assets/fizzarolli.png")
+        LUCIFER = ("Lucifer", "assets/lucifer.png")
+        ADAM = ("Adam", "assets/adam.png")
 
         def __new__(cls, value, image):
             obj = object.__new__(cls)
@@ -180,10 +139,93 @@ class Player:
 
             return obj
 
+class Variant(Enum):
+    BASE = ("Trust (default)", "assets/trust_board.png", [
+        Player.Piece.THIMBLE,
+        Player.Piece.TOPHAT,
+        Player.Piece.IRON,
+        Player.Piece.CAT,
+        Player.Piece.WHEELBARROW,
+        Player.Piece.TERRIER,
+        Player.Piece.RACECAR,
+        Player.Piece.BATTLESHIP
+    ])
+
+    HELLOPOLY = ("Hellopoly", "assets/hellopoly_board.png", [
+        Player.Piece.BLITZO,
+        Player.Piece.VOX,
+        Player.Piece.ANGEL_DUST,
+        Player.Piece.ALASTOR,
+        Player.Piece.LOONA,
+        Player.Piece.FIZZAROLLI,
+        Player.Piece.LUCIFER,
+        Player.Piece.ADAM
+    ])
+
+    def __new__(cls, value: str, board: str, pieces: List[Player.Piece]):
+        obj = object.__new__(cls)
+
+        obj._value_ = value
+        obj.board   = board
+        obj.pieces  = pieces
+
+        return obj
+
+class Card():
+    def __init__(self, name, description, image):
+        self.name = name
+        self.description = description
+        self.image = image
+    
+    def __str__(self):
+        return f"{self.name}"
+    
+    def on_draw(self, player, game):
+        return
+    
+    @classmethod
+    def load(self, name):
+        if os.path.exists(f"data/trust_cards/{name}.py"):
+            spec = importlib.util.spec_from_file_location(name, f"data/trust_cards/{name}.py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+        return getattr(module, name)
+    
+class Set(Enum):
+    BROWN = "Envy"
+    LIGHT_BLUE = "Sloth"
+    PURPLE = "Gluttony"
+    ORANGE = "Lust"
+    RED = "Greed"
+    YELLOW = "Wrath"
+    GREEN = "Pride"
+    DARK_BLUE = "Heaven"
+
+    RAILROADS = "Vehicles"
+    PORTALS  = "Portals"
+    SPECIAL  = ""
+
+class Location():
+    def __init__(self, name, image, cost, rent, mortgage, set, coords):
+        self.name = name
+        self.image = image
+        self.cost = cost
+        self.rent = rent
+        self.mortgage = mortgage
+        self.set = set
+        self.coords = coords
+
+        self.houses = 0
+        self.owner = None
+        self.mortgaged = False
+
 class Game():
-    def __init__(self, players):
+    def __init__(self, players, variant: Variant):
         self.players: List[Player] = players
         self.losers:  List[Player] = []
+
+        self.variant: Variant = variant
         self.message: discord.Message = None
         self.active: Player = random.choice(players)
 
@@ -270,7 +312,7 @@ class Game():
         embed.set_footer(text = config.footer)
         embed.set_image(url = "attachment://board.png")
 
-        board = Image.open("assets/board.png").resize((894, 894))
+        board = Image.open(self.variant.board).resize((894, 894))
         bytes = io.BytesIO()
         positions = []
         
@@ -1039,7 +1081,7 @@ class Game():
                 v = discord.ui.View(timeout = None)
 
                 for i in Player.Piece: 
-                    if i not in [i.piece for i in self.players]: select.add_option(label = i.value, value = i.value)
+                    if i not in [i.piece for i in self.players] and i in self.variant.pieces: select.add_option(label = i.value, value = i.value)
 
                 async def selectCallback(interaction):
                     await interaction.response.defer(ephemeral = True)
