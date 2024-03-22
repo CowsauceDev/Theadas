@@ -1499,7 +1499,7 @@ async def shopCommand(ctx):
 
         if dominoSelect.values[0] == "adena" and user.dominoes >= 2:
             user.dominoes -= 2
-            user.expansions += whiteonblack.Expansion.ADENA
+            user.expansions.append(whiteonblack.Expansion.ADENA)
             user.save()
     
     async def tilesCallback(interaction):
@@ -1843,7 +1843,9 @@ async def whiteonblackPlayCommand(ctx, packs: discord.Option(str, "Name packs to
     else:
         for p in packs.lower().split(", "):
             for e in whiteonblack.Expansion:
-                if not e in user.expansions and not (e in User(ctx.guild.owner.id).expansions and Guild(ctx.guild.id).sharing): await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = f"❌ You do not own {e.value}! You can purchase it with /shop.", color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                if not e in user.expansions and not (e in User(ctx.guild.owner.id).expansions and Guild(ctx.guild.id).sharing): 
+                    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = f"❌ You do not own {e.value}! You can purchase it with /shop.", color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                    return
                 elif p == e.value: expansions += e
 
     embed = discord.Embed(title = "Play White on Black!", description = f"{ctx.author.mention} is starting a game. Click `JOIN` to join the game or `LEAVE` to leave it. Use `/info whiteonblack` to learn the basics of the game. When there are 2-10 players in the game, {ctx.author.mention} can use `START` to start the game. They can also cancel the game by deleting this message.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.COLORLESS).set_footer(text = config.footer)
