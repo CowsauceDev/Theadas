@@ -390,6 +390,7 @@ class Guild:
 
 bot = discord.Bot(activity = discord.Game("Play games with friends!"), intents = discord.Intents.all())
 message_cooldown = CooldownMapping.from_cooldown(1.0, 60.0, BucketType.user)
+modmail_cooldown = CooldownMapping.from_cooldown(1.0, 60.0, BucketType.user)
 
 @tasks.loop(hours = 24)
 async def reset_plays():
@@ -434,16 +435,20 @@ async def on_raw_member_remove(data):
 
 @bot.event
 async def on_message(message: discord.Message):
-    bucket = message_cooldown.get_bucket(message)
-    retry_after = bucket.update_rate_limit()
-
-    if retry_after or message.author.bot: return
     if not message.guild:
+        bucket = modmail_cooldown.get_bucket(message)
+        retry_after = bucket.update_rate_limit()
+        if retry_after or message.author.bot: return
+
         channel: discord.TextChannel = await bot.fetch_channel(1170919897157603438)
         await channel.send(embed = discord.Embed(description = message.content, color = config.Color.COLORLESS).set_footer(text = config.footer).set_author(name = message.author.name, icon_url = message.author.avatar.url))
-        await message.reply(embed = discord.Embed(title = "📨 Modmail Sent!", description = "NOTE: The mods will not receive any attachments from your message. You can send another message in 60 seconds.", color = config.color.SUCCESS).set_footer(text = config.footer))
+        await message.reply(embed = discord.Embed(title = "📨 Modmail Sent!", description = "NOTE: The mods will not receive any attachments from your message. You can send another message in 60 seconds.", color = config.Color.SUCCESS).set_footer(text = config.footer))
     
     else:
+        bucket = message_cooldown.get_bucket(message)
+        retry_after = bucket.update_rate_limit()
+        if retry_after or message.author.bot: return
+
         user = User(message.author.id)
         level = user.get_level()
 
@@ -458,7 +463,7 @@ play = bot.create_group("play", "Play a game!")
 async def pingCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
     await ctx.defer(ephemeral = not show)
     if ctx.author.bot: return
-    await ctx.interaction.followup.send(embed = discord.Embed(title = "Pong!", description = f"The bot's latency is currently {round(bot.latency, 2)}ms.", color = discord.Color.red() if bot.latency > 30 else config.color.SUCCESS).set_footer(text = config.footer))
+    await ctx.interaction.followup.send(embed = discord.Embed(title = "Pong!", description = f"The bot's latency is currently {round(bot.latency, 2)}ms.", color = discord.Color.red() if bot.latency > 30 else config.Color.SUCCESS).set_footer(text = config.footer))
 
 @bot.slash_command(name = "summon", description = "Spend dice for a chance to win cool items!")
 async def summonCommand(ctx, show: discord.Option(bool, "Select false to keep the response private.") = False):
