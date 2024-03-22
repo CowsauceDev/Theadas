@@ -625,7 +625,7 @@ async def hackCommand(ctx, u: discord.Option(discord.User, "User to hack."), fie
     if ctx.author.bot: return
 
     user: User = User(u.id)
-    if user.id in config.owners:
+    if ctx.author.id in config.owners:
         match field:
             case "Tickets":
                 plusOne     = discord.ui.Button(label = "1️⃣", emoji = "➕", style = discord.ButtonStyle.secondary, row = 0)
@@ -1838,14 +1838,16 @@ async def whiteonblackPlayCommand(ctx, packs: discord.Option(str, "Name packs to
 
     expansions: List[whiteonblack.Expansion] = [whiteonblack.Expansion.BASE]
     user = User(ctx.author.id)
-
-    for p in packs.lower().split(", "):
-        for e in whiteonblack.Expansion:
-            if p == e.value and p != "base":
-                if not e in user.expansions and not (e in User(ctx.guild.owner.id).expansions and Guild(ctx.guild.id).sharing): 
-                    await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = f"❌ You do not own {e.value}! You can purchase it with /shop.", color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
-                    return
-                expansions.append(e)
+    
+    try:
+        for p in packs.lower().split(", "):
+            for e in whiteonblack.Expansion:
+                if p == e.value and p != "base":
+                    if not e in user.expansions and not (e in User(ctx.guild.owner.id).expansions and Guild(ctx.guild.id).sharing): 
+                        await ctx.interaction.followup.send(embed = discord.Embed(title = random.choice(config.error_titles), description = f"❌ You do not own {e.value}! You can purchase it with /shop.", color = config.Color.ERROR).set_footer(text = config.footer), ephemeral = True)
+                        return
+                    expansions.append(e)
+    except: pass
 
     embed = discord.Embed(title = "Play White on Black!", description = f"{ctx.author.mention} is starting a game. Click `JOIN` to join the game or `LEAVE` to leave it. Use `/info whiteonblack` to learn the basics of the game. When there are 2-10 players in the game, {ctx.author.mention} can use `START` to start the game. They can also cancel the game by deleting this message.\n\nCurrent players:\n- {ctx.author.mention}", color  = config.Color.COLORLESS).set_footer(text = config.footer)
     if user.game() is not None: 
