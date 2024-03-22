@@ -2115,7 +2115,7 @@ async def quickdrawPlayCommand(ctx, user: discord.Option(discord.Member, "Challe
 
     g.message = await ctx.interaction.followup.send(embed = e, view = v, ephemeral = False)
 
-@play.command(name = "priceisurban", description = "Guess how many likes and dislikes the entry has!", guild_ids = [537839766381658134])
+@play.command(name = "priceisurban", description = "Guess how many likes and dislikes the entry has!")
 async def priceisurbanCommand(ctx, word: discord.Option(str, "Pick a word to guess on or leave blank for random.") = None):
     await ctx.defer(ephemeral = False)
     if ctx.author.bot: return
