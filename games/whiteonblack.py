@@ -32,13 +32,14 @@ description = '''
 '''
 
 class Expansion(Enum):
-    BASE = ("Base Set", "data/whiteonblack_cards/base_blacks.json", "data/whiteonblack_cards/base_whites.json")
-    ADENA = ("Adena/Theadas Inside Jokes", "data/whiteonblack_cards/adena_blacks.json", "data/whiteonblack_cards/adena_whites.json")
+    BASE = ("base", "Base Set", "data/whiteonblack_cards/base_blacks.json", "data/whiteonblack_cards/base_whites.json")
+    ADENA = ("adena", "Adena/Theadas Inside Jokes", "data/whiteonblack_cards/adena_blacks.json", "data/whiteonblack_cards/adena_whites.json")
 
-    def __new__(cls, value, blacks, whites):
+    def __new__(cls, value, title, blacks, whites):
         obj = object.__new__(cls)
         obj._value_ = value
 
+        obj.title  = title
         obj.blacks = blacks
         obj.whites = whites
 
@@ -115,18 +116,20 @@ class Game():
         for i in self.players: pickle.dump(game, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{i.id}.p", "wb"))
 
     def shuffle_blacks(self):
-        self.blacks = []
+        blacks = []
         for e in self.expansions:
             bd = json.load(open(e.blacks))
-            for i in [Card(i["name"], str(bd.index(i)), i["blanks"]) for i in bd]: self.blacks.append(i)
-            random.shuffle(self.blacks)
+            for i in [Card(i["name"], str(bd.index(i)), i["blanks"]) for i in bd]: blacks.append(i)
+            random.shuffle(blacks)
+        for i in blacks: self.blacks.append(i)
 
     def shuffle_whites(self):
-        self.whites = []
+        whites = []
         for e in self.expansions:
             wd = json.load(open(e.whites))
-            for i in [Card(i, str(wd.index(i)), None) for i in wd]: self.whites.append(i)
-            random.shuffle(self.whites)
+            for i in [Card(i, str(wd.index(i)), None) for i in wd]: whites.append(i)
+            random.shuffle(whites)
+        for i in whites: self.whites.append(i)
 
     def render(self):
         embeds = [discord.Embed(color = config.Color.BLACK_CARD, title = self.black.name)]
