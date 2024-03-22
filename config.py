@@ -18,7 +18,7 @@
 
 from enum import Enum
 
-version = "0.5"
+version = "1.0"
 token   = ""
 owners  = [645064200502378506, 397898909625745419, 322176427715985421]
 
