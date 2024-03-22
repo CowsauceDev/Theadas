@@ -105,7 +105,7 @@ class Game():
         if self.started: view = discord.ui.View(stopButton)
         else: view = discord.ui.View(pullButton)
 
-        return discord.Embed(title = f"🎰 Slot Machine ({self.bet} on line {self.payline})" + (" [WON!]" if self.won() else (" [LOST!]" if self.stopped else "")), description = self.board(), color = discord.Color.red() if self.stopped and not self.won() > 30 else (config.color.SUCCESS if self.won() else config.Color.COLORLESS)).set_footer(text = config.footer), view
+        return discord.Embed(title = f"🎰 Slot Machine ({self.bet} on line {self.payline})" + (" [WON!]" if self.won() else (" [LOST!]" if self.stopped else "")), description = self.board(), color = discord.Color.red() if self.stopped and not self.won() > 30 else (config.Color.SUCCESS if self.won() else config.Color.COLORLESS)).set_footer(text = config.footer), view
 
     class Player:
         def __init__(self, id, name):
