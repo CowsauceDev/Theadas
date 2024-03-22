@@ -161,7 +161,7 @@ class Game():
 
         for i in self.players: pickle.dump(game, open(f"{os.path.join(os.path.dirname(config.__file__), 'data/games')}/{i.id}.p", "wb"))
 
-    def villages(self) -> List[Player]: return [i for i in self.players if i.alignment == 0]
+    def villagers(self) -> List[Player]: return [i for i in self.players if i.alignment == 0]
     def wolves(self) -> List[Player]: return [i for i in self.players if i.alignment == 1]
     def self_aligned(self) -> List[Player]: return [i for i in self.players if i.alignment == 2]
     def is_night(self)-> bool: return self.round % 2 == 0
